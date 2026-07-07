@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Personal video game collection tracker across Steam, PlayStation and more." />
-  <title>Game Library</title>
+  <meta name="description" content="Vig's personal video game collection tracker across Steam, PlayStation and more." />
+  <title>Vig's Gaming Library</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiM1YjhkZWYiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksLWFwcGxlLXN5c3RlbSxTZWdvZSBVSSxSb2JvdG8sc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNyIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iI2ZmZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Vkc8L3RleHQ+PC9zdmc+" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -14,8 +15,8 @@
   <header class="topbar">
     <div class="topbar__inner">
       <div class="brand">
-        <span class="brand__mark" aria-hidden="true">🎮</span>
-        <h1 class="brand__title">Game Library</h1>
+        <span class="brand__mark" aria-hidden="true">VG</span>
+        <h1 class="brand__title">Vig's Gaming Library</h1>
       </div>
       <div class="topbar__actions">
         <button id="addBtn" class="btn btn--primary" type="button">
@@ -40,6 +41,8 @@
     <div class="tabs__inner">
       <button class="tab tab--active" type="button" data-view="library" aria-current="page">Library</button>
       <button class="tab" type="button" data-view="insights">Insights</button>
+      <button class="tab" type="button" data-view="year">Year in Review</button>
+      <button class="tab" type="button" data-view="details">Details</button>
       <button id="filterToggle" class="tabs__filter" type="button" aria-expanded="false" aria-controls="controls">
         <span aria-hidden="true">⚲</span> <span class="btn__text">Search &amp; Sort</span>
       </button>
@@ -102,6 +105,60 @@
   <!-- ========================= INSIGHTS VIEW ========================= -->
   <div id="insightsView" hidden>
     <main class="main" id="insightsMain"></main>
+  </div>
+
+  <!-- ========================= YEAR IN REVIEW VIEW ========================= -->
+  <div id="yearView" hidden>
+    <main class="main" id="yearMain"></main>
+  </div>
+
+  <!-- ========================= DETAILS VIEW ========================= -->
+  <div id="detailsView" hidden>
+    <section class="controls" aria-label="Filter details table">
+      <div class="controls__inner">
+        <div class="search">
+          <label class="sr-only" for="detailsSearch">Search games</label>
+          <input id="detailsSearch" class="search__input" type="search" placeholder="Search by title…" autocomplete="off" />
+        </div>
+        <div class="filters">
+          <label class="field">
+            <span class="field__label">Platform</span>
+            <select id="detailsPlatform" class="field__select">
+              <option value="">All platforms</option>
+              <option value="Steam">Steam</option>
+              <option value="PlayStation">PlayStation</option>
+              <option value="Xbox">Xbox</option>
+              <option value="Nintendo">Nintendo</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Status</span>
+            <select id="detailsStatus" class="field__select">
+              <option value="">All statuses</option>
+              <option value="Currently Playing">Currently Playing</option>
+              <option value="Evergreen">Evergreen</option>
+              <option value="Backlog">Backlog</option>
+              <option value="Finished">Finished</option>
+              <option value="Shelved">Shelved</option>
+              <option value="Archived">Archived</option>
+            </select>
+          </label>
+        </div>
+        <button id="detailsCsvBtn" class="btn" type="button">
+          <span aria-hidden="true">⬇</span> <span class="btn__text">Export CSV</span>
+        </button>
+      </div>
+    </section>
+    <main class="main">
+      <p id="detailsCount" class="details__count"></p>
+      <div class="table-wrap">
+        <table class="dtable" id="detailsTable">
+          <thead><tr id="detailsHead"></tr></thead>
+          <tbody id="detailsBody"></tbody>
+        </table>
+      </div>
+    </main>
   </div>
 
   <!-- Add/Edit dialog -->

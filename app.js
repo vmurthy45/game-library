@@ -465,6 +465,8 @@
         applyFirstPlayed();
         render();
         if (ui.view === "insights") renderInsights();
+        else if (ui.view === "year") renderYearReview();
+        else if (ui.view === "details") renderDetails();
       }
     } catch (e) {
       /* offline or files absent — nothing to do */
@@ -563,23 +565,22 @@
     }
     const total = data.length;
     const totalHours = data.reduce((s, g) => s + (Number(g.playtime) || 0), 0);
+    const hoursThisMonth = computeHoursThisMonth();
     const rated = data.filter((g) => g.score);
     const avgScore = rated.length ? (rated.reduce((s, g) => s + g.score, 0) / rated.length) : 0;
     const finished = data.filter((g) => g.status === "Finished").length;
+    const cost = computeCostPerHour(data);
 
     const tiles = [
       { n: total, l: "Games" },
       { n: Math.round(totalHours).toLocaleString() + "h", l: "Total played" },
+      { n: hoursThisMonth ? fmtHours(hoursThisMonth) : "—", l: "Hours this month" },
       { n: rated.length ? avgScore.toFixed(1) : "—", l: "Avg score" },
       { n: total ? Math.round(finished / total * 100) + "%" : "—", l: "Finished" },
+      { n: cost.avg != null ? formatMoney(cost.avg) + "/h" : "—", l: "Avg cost/hour" },
     ];
     const tilesHtml = tiles.map((t) =>
       `<div class="itile"><div class="itile__n">${t.n}</div><div class="itile__l">${t.l}</div></div>`).join("");
-
-    const years = availableYears();
-    if (!years.includes(String(insightsYear))) insightsYear = Number(years[0]);
-    const yearOpts = years.map((y) =>
-      `<option value="${y}"${Number(y) === insightsYear ? " selected" : ""}>${y}</option>`).join("");
 
     el.innerHTML = `
       <div class="insights__head">
@@ -588,7 +589,6 @@
           <button class="btn" id="csvDailyBtn" type="button"><span aria-hidden="true">⬇</span> Play-time CSV</button>
         </div>
       </div>
-      ${yearReviewBlock(insightsYear, yearOpts)}
       <div class="itiles">${tilesHtml}</div>
       <div class="icards">
         ${cardBlock("Daily play time", dailyChart())}
@@ -596,12 +596,29 @@
         ${cardBlock("By status", statusChart())}
         ${cardBlock("Score distribution", scoreChart())}
         ${cardBlock("Top genres", genreChart())}
+        ${cardBlock("Cost per hour", costPerHourChart(cost))}
+        ${cardBlock("Monthly breakdown", monthlyBreakdownTable(), true)}
       </div>`;
 
     $("#csvBtn").addEventListener("click", exportCSV);
     $("#csvDailyBtn").addEventListener("click", exportDailyCSV);
+  }
+
+  /* ---------- Year in Review (own tab) ---------- */
+  function renderYearReview() {
+    const el = $("#yearMain");
+    if (reportable().length === 0) {
+      el.innerHTML = `<div class="empty"><p class="empty__title">No data yet</p>
+        <p class="empty__hint">Import your Steam library to see your year in review.</p></div>`;
+      return;
+    }
+    const years = availableYears();
+    if (!years.includes(String(insightsYear))) insightsYear = Number(years[0]);
+    const yearOpts = years.map((y) =>
+      `<option value="${y}"${Number(y) === insightsYear ? " selected" : ""}>${y}</option>`).join("");
+    el.innerHTML = yearReviewBlock(insightsYear, yearOpts);
     const ys = $("#yearSelect");
-    if (ys) ys.addEventListener("change", (e) => { insightsYear = Number(e.target.value); renderInsights(); });
+    if (ys) ys.addEventListener("change", (e) => { insightsYear = Number(e.target.value); renderYearReview(); });
   }
 
   function yearReviewBlock(year, yearOpts) {
@@ -667,8 +684,92 @@
         <div class="yr__cols">${highlights}</div>
       </section>`;
   }
-  function cardBlock(title, inner) {
-    return `<div class="icard"><h3 class="icard__title">${title}</h3>${inner}</div>`;
+  function cardBlock(title, inner, wide) {
+    return `<div class="icard${wide ? " icard--wide" : ""}"><h3 class="icard__title">${title}</h3>${inner}</div>`;
+  }
+
+  // Hours played within the current calendar month (from snapshot diffs).
+  function computeHoursThisMonth() {
+    const ym = new Date().toISOString().slice(0, 7);
+    return computeDailyPlaytime()
+      .filter((d) => d.date.slice(0, 7) === ym)
+      .reduce((s, d) => s + d.hours, 0);
+  }
+
+  // Per-game hours added, bucketed by calendar month (from snapshot diffs).
+  function computeMonthlyBreakdown() {
+    const snaps = loadSnapshots();
+    const skip = archivedIds();
+    const byMonth = {};
+    for (let i = 1; i < snaps.length; i++) {
+      const month = snaps[i].date.slice(0, 7);
+      const prev = snaps[i - 1].totals, cur = snaps[i].totals;
+      const bucket = byMonth[month] = byMonth[month] || {};
+      Object.keys(cur).forEach((id) => {
+        if (skip.has(id)) return;
+        const d = (cur[id] || 0) - (prev[id] || 0);
+        if (d > 0) bucket[id] = (bucket[id] || 0) + d;
+      });
+    }
+    return byMonth;
+  }
+
+  function monthlyBreakdownTable() {
+    const byMonth = computeMonthlyBreakdown();
+    const months = Object.keys(byMonth).sort().reverse().slice(0, 12);
+    if (!months.length) {
+      return `<p class="icard__empty">Monthly breakdown appears after your <strong>next sync</strong> — we need at least two snapshots to see hours per month.</p>`;
+    }
+    const rows = months.map((m) => {
+      const bucket = byMonth[m];
+      const total = Object.values(bucket).reduce((s, h) => s + h, 0);
+      const top = Object.keys(bucket)
+        .map((id) => ({ g: games.find((x) => x.id === id), h: bucket[id] }))
+        .filter((x) => x.g).sort((a, b) => b.h - a.h).slice(0, 3);
+      const label = new Date(m + "-01T00:00:00").toLocaleDateString(undefined, { month: "short", year: "numeric" });
+      const topStr = top.map((x) => `${escapeHtml(x.g.title)} (${fmtHours(x.h)})`).join(", ") || "—";
+      return `<tr><td>${label}</td><td>${fmtHours(total)}</td><td>${topStr}</td></tr>`;
+    }).join("");
+    return `<div class="table-wrap"><table class="mtable">
+      <thead><tr><th>Month</th><th>Hours</th><th>Top games</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
+
+  // Cost-per-hour = purchasePrice ÷ playtime. Only meaningful for priced,
+  // played games; unplayed purchases are called out separately.
+  function computeCostPerHour(data) {
+    const priced = data.filter((g) => g.purchasePrice != null);
+    const played = priced.filter((g) => (g.playtime || 0) > 0);
+    const ranked = played.map((g) => ({ g, cph: g.purchasePrice / g.playtime })).sort((a, b) => a.cph - b.cph);
+    const totalHours = played.reduce((s, g) => s + g.playtime, 0);
+    const totalSpentPlayed = played.reduce((s, g) => s + g.purchasePrice, 0);
+    return {
+      ranked,
+      avg: totalHours > 0 ? totalSpentPlayed / totalHours : null,
+      unplayedPriced: priced.filter((g) => !((g.playtime || 0) > 0)),
+    };
+  }
+
+  function costPerHourChart(cost) {
+    if (!cost.ranked.length) {
+      return `<p class="icard__empty">Add a purchase price to some played games to see this.</p>`;
+    }
+    const list = (items) => `<ol class="yr__list">` +
+      items.map((x) => `<li>${escapeHtml(x.g.title)} <span>${formatMoney(x.cph)}/h</span></li>`).join("") +
+      `</ol>`;
+    let html;
+    if (cost.ranked.length <= 6) {
+      html = `<div class="yr__col"><h4>Ranked (best → worst value)</h4>${list(cost.ranked)}</div>`;
+    } else {
+      html = `<div class="yr__cols">
+        <div class="yr__col"><h4>Best value</h4>${list(cost.ranked.slice(0, 5))}</div>
+        <div class="yr__col"><h4>Worst value</h4>${list(cost.ranked.slice(-5).reverse())}</div>
+      </div>`;
+    }
+    if (cost.unplayedPriced.length) {
+      html += `<p class="icard__empty">${cost.unplayedPriced.length} purchased game(s) not yet played aren't shown.</p>`;
+    }
+    return html;
   }
   function hbars(rows, colorFn) {
     if (!rows.length) return `<p class="icard__empty">No data yet.</p>`;
@@ -730,11 +831,95 @@
     return `<div class="vbars vbars--wide">${bars}</div>`;
   }
 
+  /* ---------- Details (filterable/sortable table + CSV) ---------- */
+  const DETAIL_COLS = [
+    { key: "title", label: "Title" },
+    { key: "platform", label: "Platform" },
+    { key: "status", label: "Status" },
+    { key: "score", label: "Score", numeric: true },
+    { key: "playtime", label: "Hours", numeric: true },
+    { key: "firstPlayed", label: "First played" },
+    { key: "lastPlayed", label: "Last played" },
+    { key: "completed", label: "Completed" },
+    { key: "purchaseDate", label: "Purchased" },
+    { key: "purchasePrice", label: "Price", numeric: true },
+    { key: "steamDeck", label: "Deck" },
+    { key: "genre", label: "Genre" },
+    { key: "metacritic", label: "MC", numeric: true },
+  ];
+  const detailsUi = { search: "", platform: "", status: "", sortKey: "title", sortDir: 1 };
+
+  function getDetailsFiltered() {
+    const q = detailsUi.search.trim().toLowerCase();
+    const list = games.filter((g) => {
+      if (detailsUi.platform && g.platform !== detailsUi.platform) return false;
+      if (detailsUi.status && g.status !== detailsUi.status) return false;
+      if (q && !g.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const col = detailsUi.sortKey;
+    const dir = detailsUi.sortDir;
+    list.sort((a, b) => {
+      let av = a[col], bv = b[col];
+      if (DETAIL_COLS.find((c) => c.key === col).numeric) {
+        av = av == null ? -Infinity : Number(av);
+        bv = bv == null ? -Infinity : Number(bv);
+        return (av - bv) * dir;
+      }
+      av = (av || "").toString().toLowerCase();
+      bv = (bv || "").toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
+    });
+    return list;
+  }
+
+  function detailsCell(g, col) {
+    switch (col.key) {
+      case "title": return escapeHtml(g.title);
+      case "score": return g.score || "—";
+      case "playtime": return fmtHours(g.playtime);
+      case "firstPlayed": case "lastPlayed": case "completed": case "purchaseDate":
+        return fmtDate(g[col.key]);
+      case "purchasePrice": return g.purchasePrice != null ? formatMoney(g.purchasePrice) : "—";
+      case "steamDeck": return g.steamDeck ? "✓" : "";
+      case "metacritic": return g.metacritic != null ? g.metacritic : "—";
+      default: return escapeHtml(g[col.key] || "—");
+    }
+  }
+
+  function renderDetails() {
+    const head = $("#detailsHead");
+    head.innerHTML = DETAIL_COLS.map((c) => {
+      const active = detailsUi.sortKey === c.key;
+      const arrow = active ? (detailsUi.sortDir === 1 ? " ▲" : " ▼") : "";
+      return `<th><button type="button" class="dtable__sort${active ? " dtable__sort--active" : ""}" data-key="${c.key}">${c.label}${arrow}</button></th>`;
+    }).join("");
+
+    const list = getDetailsFiltered();
+    $("#detailsCount").textContent = `${list.length} of ${games.length} games`;
+    $("#detailsBody").innerHTML = list.map((g) =>
+      `<tr>${DETAIL_COLS.map((c) => `<td>${detailsCell(g, c)}</td>`).join("")}</tr>`
+    ).join("") || `<tr><td colspan="${DETAIL_COLS.length}" class="icard__empty">No games match.</td></tr>`;
+  }
+
+  function exportDetailsCSV() {
+    const list = getDetailsFiltered();
+    const header = DETAIL_COLS.map((c) => c.label).join(",");
+    const rows = list.map((g) => DETAIL_COLS.map((c) => {
+      if (c.key === "steamDeck") return csvCell(g.steamDeck ? "Yes" : "");
+      return csvCell(g[c.key] != null ? g[c.key] : "");
+    }).join(","));
+    downloadBlob(header + "\n" + rows.join("\n"), "text/csv",
+      `game-library-details-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+
   /* ---------- Tabs ---------- */
   function switchView(view) {
     ui.view = view;
     $("#libraryView").hidden = view !== "library";
     $("#insightsView").hidden = view !== "insights";
+    $("#yearView").hidden = view !== "year";
+    $("#detailsView").hidden = view !== "details";
     $("#filterToggle").hidden = view !== "library";
     document.querySelectorAll(".tab").forEach((t) => {
       const active = t.dataset.view === view;
@@ -742,6 +927,8 @@
       if (active) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
     });
     if (view === "insights") renderInsights();
+    else if (view === "year") renderYearReview();
+    else if (view === "details") renderDetails();
   }
   function toggleControls() {
     const c = $("#controls");
@@ -862,6 +1049,22 @@
     $("#sortSelect").addEventListener("change", (e) => { ui.sort = e.target.value; render(); });
 
     dialog.addEventListener("click", (e) => { if (e.target === dialog) closeDialog(); });
+
+    // Details tab
+    $("#detailsSearch").addEventListener("input", debounce(function () {
+      detailsUi.search = $("#detailsSearch").value; renderDetails();
+    }, 120));
+    $("#detailsPlatform").addEventListener("change", (e) => { detailsUi.platform = e.target.value; renderDetails(); });
+    $("#detailsStatus").addEventListener("change", (e) => { detailsUi.status = e.target.value; renderDetails(); });
+    $("#detailsCsvBtn").addEventListener("click", exportDetailsCSV);
+    $("#detailsHead").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-key]");
+      if (!btn) return;
+      const key = btn.dataset.key;
+      if (detailsUi.sortKey === key) detailsUi.sortDir *= -1;
+      else { detailsUi.sortKey = key; detailsUi.sortDir = 1; }
+      renderDetails();
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
