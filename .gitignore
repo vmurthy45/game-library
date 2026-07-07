@@ -1,0 +1,5 @@
+.DS_Store
+__pycache__/
+*.pyc
+# Local artifact from running steam_sync.py directly (the deployed data lives in data/)
+tools/steam_games.json

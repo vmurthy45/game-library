@@ -1,0 +1,46 @@
+name: Daily Steam sync
+
+# Runs once a day (and on demand) to fetch your Steam library + play time and
+# commit it to the repo. This is what captures hours even when you never open
+# the site. Your Steam key lives in encrypted repo Secrets (never in the code).
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch: {}    # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write          # allow the job to commit the updated data
+
+concurrency:
+  group: steam-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch Steam library + update snapshot
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          STEAM_ID: ${{ secrets.STEAM_ID }}
+        run: python3 tools/steam_sync.py --out data --metadata
+
+      - name: Commit updated data
+        run: |
+          git config user.name "steam-sync-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/steam_games.json data/snapshots.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Daily Steam sync: $(date -u +%Y-%m-%d)"
+            git push
+          fi

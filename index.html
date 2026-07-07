@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Personal video game collection tracker across Steam, PlayStation and more." />
+  <title>Game Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">🎮</span>
+        <h1 class="brand__title">Game Library</h1>
+      </div>
+      <div class="topbar__actions">
+        <button id="addBtn" class="btn btn--primary" type="button">
+          <span aria-hidden="true">+</span> <span class="btn__text">Add game</span>
+        </button>
+        <button id="importBtn" class="btn" type="button" title="Import a Steam JSON export">
+          <span aria-hidden="true">⬆</span> <span class="btn__text">Import</span>
+        </button>
+        <button id="exportBtn" class="btn" type="button" title="Download a backup of your library">
+          <span aria-hidden="true">⬇</span> <span class="btn__text">Export</span>
+        </button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden />
+        <button id="themeBtn" class="btn btn--icon" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <span class="theme-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tabs" aria-label="Views">
+    <div class="tabs__inner">
+      <button class="tab tab--active" type="button" data-view="library" aria-current="page">Library</button>
+      <button class="tab" type="button" data-view="insights">Insights</button>
+      <button id="filterToggle" class="tabs__filter" type="button" aria-expanded="false" aria-controls="controls">
+        <span aria-hidden="true">⚲</span> <span class="btn__text">Search &amp; Sort</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================= LIBRARY VIEW ========================= -->
+  <div id="libraryView">
+    <!-- Status filter chips -->
+    <section class="chips" aria-label="Filter by status">
+      <div class="chips__inner" id="statusChips" role="group">
+        <!-- populated by JS -->
+      </div>
+    </section>
+
+    <!-- Controls: search, platform, sort (toggled by the Search & Sort button) -->
+    <section class="controls" id="controls" aria-label="Search and sort" hidden>
+      <div class="controls__inner">
+        <div class="search">
+          <label class="sr-only" for="searchInput">Search games</label>
+          <input id="searchInput" class="search__input" type="search" placeholder="Search by title…" autocomplete="off" />
+        </div>
+
+        <div class="filters">
+          <label class="field">
+            <span class="field__label">Platform</span>
+            <select id="platformFilter" class="field__select">
+              <option value="">All platforms</option>
+              <option value="Steam">Steam</option>
+              <option value="PlayStation">PlayStation</option>
+              <option value="Xbox">Xbox</option>
+              <option value="Nintendo">Nintendo</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Sort by</span>
+            <select id="sortSelect" class="field__select">
+              <option value="lastPlayed">Last played</option>
+              <option value="title">Title (A–Z)</option>
+              <option value="score">My score</option>
+              <option value="playtime">Play time</option>
+              <option value="added">Recently added</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <main id="main" class="main">
+      <div id="sections"></div>
+      <div id="emptyState" class="empty" hidden>
+        <p class="empty__title">No games yet</p>
+        <p class="empty__hint">Click <strong>“Import”</strong> to load your Steam library (from <code>steam_games.json</code>), <strong>“Add game”</strong> to add one manually, or adjust your filters.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================= INSIGHTS VIEW ========================= -->
+  <div id="insightsView" hidden>
+    <main class="main" id="insightsMain"></main>
+  </div>
+
+  <!-- Add/Edit dialog -->
+  <dialog id="gameDialog" class="dialog">
+    <form id="gameForm" method="dialog" class="dialog__form">
+      <div class="dialog__head">
+        <h2 id="dialogTitle" class="dialog__title">Add game</h2>
+        <button type="button" class="btn btn--icon" id="closeDialog" aria-label="Close">✕</button>
+      </div>
+
+      <div class="dialog__body">
+        <input type="hidden" id="gameId" />
+
+        <label class="field field--block">
+          <span class="field__label">Title <span class="req">*</span></span>
+          <input id="f_title" class="field__input" type="text" required maxlength="200" placeholder="e.g. Elden Ring" />
+        </label>
+
+        <div class="field-row">
+          <label class="field field--block">
+            <span class="field__label">Platform</span>
+            <select id="f_platform" class="field__select">
+              <option value="Steam">Steam</option>
+              <option value="PlayStation">PlayStation</option>
+              <option value="Xbox">Xbox</option>
+              <option value="Nintendo">Nintendo</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label class="field field--block">
+            <span class="field__label">Status</span>
+            <select id="f_status" class="field__select">
+              <option value="Backlog">Backlog</option>
+              <option value="Currently Playing">Currently Playing</option>
+              <option value="Evergreen">Evergreen</option>
+              <option value="Finished">Finished</option>
+              <option value="Shelved">Shelved</option>
+              <option value="Archived">Archived</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="score-row">
+          <div class="field field--block">
+            <span class="field__label">My score (1–10)</span>
+            <div class="stars" id="scoreStars" role="slider" tabindex="0"
+                 aria-label="Score out of 10" aria-valmin="0" aria-valuemax="10" aria-valuenow="0">
+              <!-- star buttons injected by JS -->
+            </div>
+            <input type="hidden" id="f_score" />
+          </div>
+          <label class="field field--check field--deck" id="f_steamDeckRow" hidden>
+            <input type="checkbox" id="f_steamDeck" />
+            <span class="field__label">Played on Steam Deck</span>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field field--block">
+            <span class="field__label">Play time (hours)</span>
+            <input id="f_playtime" class="field__input" type="number" min="0" step="0.1" placeholder="0" />
+          </label>
+
+          <label class="field field--block">
+            <span class="field__label">Last played</span>
+            <input id="f_lastPlayed" class="field__input" type="date" />
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field field--block">
+            <span class="field__label">First played</span>
+            <input id="f_firstPlayed" class="field__input" type="date" />
+          </label>
+
+          <label class="field field--block">
+            <span class="field__label">Completion date</span>
+            <input id="f_completed" class="field__input" type="date" />
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field field--block">
+            <span class="field__label">Purchase date</span>
+            <input id="f_purchaseDate" class="field__input" type="date" />
+          </label>
+
+          <label class="field field--block">
+            <span class="field__label">Purchase price ($)</span>
+            <input id="f_purchasePrice" class="field__input" type="number" min="0" step="0.01" placeholder="0.00" />
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field field--block">
+            <span class="field__label">Genre</span>
+            <input id="f_genre" class="field__input" type="text" placeholder="e.g. RPG" />
+          </label>
+
+          <label class="field field--block">
+            <span class="field__label">Metacritic</span>
+            <input id="f_metacritic" class="field__input" type="number" min="0" max="100" step="1" placeholder="—" />
+          </label>
+        </div>
+
+        <label class="field field--block">
+          <span class="field__label">Cover image URL</span>
+          <input id="f_cover" class="field__input" type="url" placeholder="https://…" />
+        </label>
+      </div>
+
+      <div class="dialog__foot">
+        <button type="button" id="deleteBtn" class="btn btn--danger" hidden>Delete</button>
+        <span class="dialog__foot-spacer"></span>
+        <button type="button" id="cancelBtn" class="btn">Cancel</button>
+        <button type="submit" id="saveBtn" class="btn btn--primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
