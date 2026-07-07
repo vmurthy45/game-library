@@ -936,6 +936,17 @@
     { key: "metacritic", label: "MC", numeric: true },
   ];
   const detailsUi = { search: "", platform: "", status: "", sortKey: "title", sortDir: 1 };
+  const detailsSelection = new Set();   // selected game ids; independent of current filter
+
+  // Fields sensible to bulk-correct across many rows at once.
+  const BULK_FIELDS = [
+    { key: "status", label: "Status", type: "select", options: STATUS_ORDER.concat(ARCHIVED) },
+    { key: "platform", label: "Platform", type: "select", options: ["Steam", "PlayStation", "Xbox", "Nintendo", "Other"] },
+    { key: "genre", label: "Genre", type: "text" },
+    { key: "metacritic", label: "Metacritic", type: "number" },
+    { key: "steamDeck", label: "Steam Deck", type: "select", options: ["Yes", "No"] },
+  ];
+  let bulkFieldKey = "status";
 
   function getDetailsFiltered() {
     const q = detailsUi.search.trim().toLowerCase();
@@ -977,17 +988,87 @@
 
   function renderDetails() {
     const head = $("#detailsHead");
-    head.innerHTML = DETAIL_COLS.map((c) => {
-      const active = detailsUi.sortKey === c.key;
-      const arrow = active ? (detailsUi.sortDir === 1 ? " ▲" : " ▼") : "";
-      return `<th><button type="button" class="dtable__sort${active ? " dtable__sort--active" : ""}" data-key="${c.key}">${c.label}${arrow}</button></th>`;
-    }).join("");
+    head.innerHTML = `<th><input type="checkbox" id="detailsSelectAll" aria-label="Select all visible rows" /></th>` +
+      DETAIL_COLS.map((c) => {
+        const active = detailsUi.sortKey === c.key;
+        const arrow = active ? (detailsUi.sortDir === 1 ? " ▲" : " ▼") : "";
+        return `<th><button type="button" class="dtable__sort${active ? " dtable__sort--active" : ""}" data-key="${c.key}">${c.label}${arrow}</button></th>`;
+      }).join("");
 
     const list = getDetailsFiltered();
     $("#detailsCount").textContent = `${list.length} of ${games.length} games`;
     $("#detailsBody").innerHTML = list.map((g) =>
-      `<tr>${DETAIL_COLS.map((c) => `<td>${detailsCell(g, c)}</td>`).join("")}</tr>`
-    ).join("") || `<tr><td colspan="${DETAIL_COLS.length}" class="icard__empty">No games match.</td></tr>`;
+      `<tr><td><input type="checkbox" class="dtable__rowcheck" data-id="${g.id}"${detailsSelection.has(g.id) ? " checked" : ""} aria-label="Select ${escapeHtml(g.title)}" /></td>${DETAIL_COLS.map((c) => `<td>${detailsCell(g, c)}</td>`).join("")}</tr>`
+    ).join("") || `<tr><td colspan="${DETAIL_COLS.length + 1}" class="icard__empty">No games match.</td></tr>`;
+
+    updateSelectAllState(list);
+    renderBulkBar();
+  }
+
+  function updateSelectAllState(list) {
+    const selectAll = $("#detailsSelectAll");
+    if (!selectAll) return;
+    list = list || getDetailsFiltered();
+    const visibleIds = list.map((g) => g.id);
+    const selectedVisible = visibleIds.filter((id) => detailsSelection.has(id));
+    selectAll.checked = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
+    selectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < visibleIds.length;
+  }
+
+  /* ---------- Bulk edit (Details tab) ---------- */
+  function bulkValueInputHtml() {
+    const f = BULK_FIELDS.find((x) => x.key === bulkFieldKey);
+    if (f.type === "select") {
+      return `<select id="bulkValue" class="field__select">` +
+        f.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("") +
+        `</select>`;
+    }
+    if (f.type === "number") {
+      return `<input id="bulkValue" class="field__input" type="number" min="0" max="100" placeholder="0–100" />`;
+    }
+    return `<input id="bulkValue" class="field__input" type="text" placeholder="value" />`;
+  }
+
+  function renderBulkBar() {
+    const bar = $("#detailsBulkBar");
+    if (detailsSelection.size === 0) { bar.hidden = true; bar.innerHTML = ""; return; }
+    bar.hidden = false;
+    const fieldOpts = BULK_FIELDS.map((f) =>
+      `<option value="${f.key}"${f.key === bulkFieldKey ? " selected" : ""}>${f.label}</option>`).join("");
+    bar.innerHTML = `
+      <span class="bulkbar__count">${detailsSelection.size} selected</span>
+      <select id="bulkField" class="field__select">${fieldOpts}</select>
+      ${bulkValueInputHtml()}
+      <button id="bulkApplyBtn" class="btn btn--primary" type="button">Apply</button>
+      <button id="bulkClearBtn" class="btn" type="button">Clear</button>`;
+    $("#bulkField").addEventListener("change", (e) => { bulkFieldKey = e.target.value; renderBulkBar(); });
+    $("#bulkApplyBtn").addEventListener("click", applyBulkEdit);
+    $("#bulkClearBtn").addEventListener("click", () => { detailsSelection.clear(); renderDetails(); });
+  }
+
+  function applyBulkEdit() {
+    const valEl = $("#bulkValue");
+    if (!valEl) return;
+    const f = BULK_FIELDS.find((x) => x.key === bulkFieldKey);
+    let value = valEl.value;
+    let display = value;
+    if (f.key === "metacritic") {
+      value = value === "" ? null : clamp(Number(value), 0, 100);
+      display = value == null ? "—" : value;
+    } else if (f.key === "steamDeck") {
+      value = value === "Yes";
+      display = value ? "Yes" : "No";
+    } else if (f.key === "genre") {
+      value = value.trim();
+      if (!value) { alert("Enter a genre value first."); return; }
+    }
+    const n = detailsSelection.size;
+    if (!confirm(`Set ${f.label} to "${display}" for ${n} game${n === 1 ? "" : "s"}?`)) return;
+
+    games.forEach((g) => { if (detailsSelection.has(g.id)) g[f.key] = value; });
+    store.save(games);
+    renderDetails();
+    render();   // keep Library chips/sections/covers in sync (status/platform may have changed)
   }
 
   function exportDetailsCSV() {
@@ -1152,6 +1233,26 @@
       if (detailsUi.sortKey === key) detailsUi.sortDir *= -1;
       else { detailsUi.sortKey = key; detailsUi.sortDir = 1; }
       renderDetails();
+    });
+
+    // Bulk-select checkboxes (row toggles update the selection without a full
+    // table rebuild; "select all" scopes to the currently filtered/visible rows)
+    $("#detailsHead").addEventListener("change", (e) => {
+      if (e.target.id !== "detailsSelectAll") return;
+      const checked = e.target.checked;
+      const list = getDetailsFiltered();
+      list.forEach((g) => { if (checked) detailsSelection.add(g.id); else detailsSelection.delete(g.id); });
+      document.querySelectorAll("#detailsBody .dtable__rowcheck").forEach((cb) => {
+        cb.checked = detailsSelection.has(cb.dataset.id);
+      });
+      renderBulkBar();
+    });
+    $("#detailsBody").addEventListener("change", (e) => {
+      const cb = e.target.closest(".dtable__rowcheck");
+      if (!cb) return;
+      if (cb.checked) detailsSelection.add(cb.dataset.id); else detailsSelection.delete(cb.dataset.id);
+      updateSelectAllState();
+      renderBulkBar();
     });
   }
 

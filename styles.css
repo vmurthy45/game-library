@@ -278,6 +278,15 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 }
 .dtable__sort:hover, .dtable__sort--active { color: var(--text); }
 .details__count { color: var(--text-dim); font-size: 13px; margin: 0 0 10px; }
+.dtable th:first-child, .dtable td:first-child { width: 32px; padding-right: 0; }
+.dtable__rowcheck, #detailsSelectAll { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+
+.bulkbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--bg-elev-2); border: 1px solid var(--primary);
+  border-radius: var(--radius-sm); padding: 10px 14px; margin: 0 0 14px;
+}
+.bulkbar__count { font-weight: 700; font-size: 13px; white-space: nowrap; }
 
 .hbars { display: flex; flex-direction: column; gap: 8px; }
 .hbar { display: grid; grid-template-columns: 130px 1fr 52px; align-items: center; gap: 10px; }
