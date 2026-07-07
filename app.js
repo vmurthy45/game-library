@@ -97,6 +97,14 @@
     if (isNaN(date)) return "—";
     return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
   }
+  // "DD MMM" (e.g. "07 Jul") — used for compact chart axis labels.
+  function fmtDayMonth(d) {
+    const date = new Date(d + "T00:00:00");
+    if (isNaN(date)) return d;
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mmm = date.toLocaleDateString(undefined, { month: "short" });
+    return `${dd} ${mmm}`;
+  }
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -407,8 +415,9 @@
     downloadBlob(csv, "text/csv", `game-library-${new Date().toISOString().slice(0, 10)}.csv`);
   }
   function exportDailyCSV() {
-    const data = computeDailyPlaytime();
-    const csv = "Date,Hours played\n" + data.map((d) => `${d.date},${d.hours.toFixed(2)}`).join("\n");
+    const map = computeDailyPlaytimeMap();
+    const dates = Object.keys(map).sort();
+    const csv = "Date,Hours played\n" + dates.map((d) => `${d},${map[d].toFixed(2)}`).join("\n");
     downloadBlob(csv, "text/csv", `playtime-daily-${new Date().toISOString().slice(0, 10)}.csv`);
   }
   function downloadBlob(content, type, filename) {
@@ -487,9 +496,10 @@
   function archivedIds() {
     return new Set(games.filter((g) => g.status === ARCHIVED).map((g) => g.id));
   }
-  function computeDailyPlaytime() {
+  // date -> hours played that day (only dates with a recorded snapshot diff).
+  function computeDailyPlaytimeMap() {
     const snaps = loadSnapshots();
-    if (snaps.length < 2) return [];
+    if (snaps.length < 2) return {};
     const skip = archivedIds();
     const perDay = {};
     for (let i = 1; i < snaps.length; i++) {
@@ -502,7 +512,32 @@
       });
       perDay[snaps[i].date] = (perDay[snaps[i].date] || 0) + delta;
     }
-    return Object.keys(perDay).sort().map((date) => ({ date, hours: perDay[date] }));
+    return perDay;
+  }
+  // Pure-UTC day arithmetic. "today" throughout this app is the UTC calendar
+  // date (matching how the daily sync dates its snapshots) — building the Date
+  // from a local-time string and reading it back via toISOString() would shift
+  // the result by a day in any timezone ahead of UTC, so this stays in UTC only.
+  function addDays(dateStr, delta) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + delta);
+    return dt.toISOString().slice(0, 10);
+  }
+  // Every calendar day in [start, end] inclusive, 0h for days with no recorded play
+  // (fills gaps so the chart shows a continuous timeline, not just active days).
+  function dailyPlaytimeInRange(start, end) {
+    const map = computeDailyPlaytimeMap();
+    const out = [];
+    let d = start > end ? end : start;
+    const last = start > end ? start : end;
+    let guard = 0;
+    while (d <= last && guard < 1200) {   // cap ~3.3 years to keep the DOM sane
+      out.push({ date: d, hours: map[d] || 0 });
+      d = addDays(d, 1);
+      guard++;
+    }
+    return out;
   }
   // Per-game hours added within a given calendar year (from snapshot diffs).
   function computeGameHoursForYear(year) {
@@ -602,6 +637,21 @@
 
     $("#csvBtn").addEventListener("click", exportCSV);
     $("#csvDailyBtn").addEventListener("click", exportDailyCSV);
+
+    const drs = $("#dailyRangeSelect");
+    if (drs) drs.addEventListener("change", (e) => {
+      dailyRangeUi.preset = e.target.value;
+      if (dailyRangeUi.preset === "custom" && !dailyRangeUi.from) {
+        const b = dailyRangeBounds(); // seed sensible defaults on first switch to custom
+        dailyRangeUi.from = addDays(b.end, -6);
+        dailyRangeUi.to = b.end;
+      }
+      renderInsights();
+    });
+    const df = $("#dailyFrom");
+    if (df) df.addEventListener("change", (e) => { dailyRangeUi.from = e.target.value; renderInsights(); });
+    const dt = $("#dailyTo");
+    if (dt) dt.addEventListener("change", (e) => { dailyRangeUi.to = e.target.value; renderInsights(); });
   }
 
   /* ---------- Year in Review (own tab) ---------- */
@@ -691,9 +741,8 @@
   // Hours played within the current calendar month (from snapshot diffs).
   function computeHoursThisMonth() {
     const ym = new Date().toISOString().slice(0, 7);
-    return computeDailyPlaytime()
-      .filter((d) => d.date.slice(0, 7) === ym)
-      .reduce((s, d) => s + d.hours, 0);
+    const map = computeDailyPlaytimeMap();
+    return Object.keys(map).filter((d) => d.slice(0, 7) === ym).reduce((s, d) => s + map[d], 0);
   }
 
   // Per-game hours added, bucketed by calendar month (from snapshot diffs).
@@ -818,17 +867,56 @@
     }
     return `<div class="vbars">${bars}</div>`;
   }
+  const DAILY_RANGE_OPTIONS = [
+    { value: "7d", label: "Past 7 days" },
+    { value: "30d", label: "Past month" },
+    { value: "365d", label: "Past year" },
+    { value: "lifetime", label: "Lifetime" },
+    { value: "custom", label: "Custom range" },
+  ];
+  let dailyRangeUi = { preset: "7d", from: "", to: "" };
+
+  function dailyRangeBounds() {
+    const snaps = loadSnapshots();
+    const today = new Date().toISOString().slice(0, 10);
+    const earliest = snaps.length ? snaps[0].date : today;
+    switch (dailyRangeUi.preset) {
+      case "30d": return { start: addDays(today, -29), end: today };
+      case "365d": return { start: addDays(today, -364), end: today };
+      case "lifetime": return { start: earliest, end: today };
+      case "custom": return { start: dailyRangeUi.from || earliest, end: dailyRangeUi.to || today };
+      default: return { start: addDays(today, -6), end: today };   // "7d"
+    }
+  }
+
   function dailyChart() {
-    const data = computeDailyPlaytime();
-    if (!data.length) {
+    const snaps = loadSnapshots();
+    if (snaps.length < 2) {
       return `<p class="icard__empty">Daily play time appears after your <strong>next sync</strong> — we compare snapshots to see hours added each day. (Snapshot saved ✓)</p>`;
     }
+    const { start, end } = dailyRangeBounds();
+    const data = dailyPlaytimeInRange(start, end);
     const max = Math.max.apply(null, data.map((d) => d.hours)) || 1;
-    const bars = data.slice(-30).map((d) => `
+
+    const rangeOpts = DAILY_RANGE_OPTIONS.map((o) =>
+      `<option value="${o.value}"${dailyRangeUi.preset === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+    const customInputs = dailyRangeUi.preset === "custom" ? `
+      <input type="date" id="dailyFrom" class="field__input" value="${dailyRangeUi.from || start}" />
+      <span class="daily__to">to</span>
+      <input type="date" id="dailyTo" class="field__input" value="${dailyRangeUi.to || end}" />` : "";
+
+    const toolbar = `<div class="daily__controls">
+      <select id="dailyRangeSelect" class="field__select">${rangeOpts}</select>
+      ${customInputs}
+    </div>`;
+
+    if (!data.length) return toolbar + `<p class="icard__empty">No days in this range.</p>`;
+
+    const bars = data.map((d) => `
       <div class="vbar" title="${d.date}: ${d.hours.toFixed(1)}h">
-        <span class="vbar__fill" style="height:${Math.max(2, d.hours / max * 100)}%"></span>
-        <span class="vbar__x">${d.date.slice(5)}</span></div>`).join("");
-    return `<div class="vbars vbars--wide">${bars}</div>`;
+        <span class="vbar__fill" style="height:${d.hours > 0 ? Math.max(2, d.hours / max * 100) : 0}%"></span>
+        <span class="vbar__x">${fmtDayMonth(d.date)}</span></div>`).join("");
+    return toolbar + `<div class="vbars vbars--wide">${bars}</div>`;
   }
 
   /* ---------- Details (filterable/sortable table + CSV) ---------- */
