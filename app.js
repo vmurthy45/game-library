@@ -1,9 +1,35 @@
 /* ============================================================
-   Game Library — Phase 1 (local-only)
-   Data lives in localStorage. No build step, no dependencies.
-   Firebase/Vercel sync layers slot in later without changing
-   this UI: replace `store.load`/`store.save` with async calls.
+   Game Library
+   Data lives in localStorage (instant, works offline/signed-out)
+   and, when signed in, mirrors to Firestore so personal data
+   (score/status/completion/purchase info) follows you across
+   devices. Steam-sourced fields (playtime, cover, etc.) never
+   touch Firestore — those always come fresh from data/*.json.
+   Loaded as an ES module so it can `import` the Firebase SDK
+   directly from Google's CDN; no build step required.
    ============================================================ */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, deleteDoc, getDocs, collection, writeBatch,
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+// Firebase config is meant to be public — security comes from Firestore
+// rules + sign-in, not from hiding this. Safe to commit.
+const firebaseConfig = {
+  apiKey: "AIzaSyCShyyPmKcooepZT3BlH2aYqNhQtOIOymw",
+  authDomain: "vigs-gaming-library.firebaseapp.com",
+  projectId: "vigs-gaming-library",
+  storageBucket: "vigs-gaming-library.firebasestorage.app",
+  messagingSenderId: "170908847056",
+  appId: "1:170908847056:web:b1bb756a27e49df68b47d5",
+};
+const fbApp = initializeApp(firebaseConfig);
+const fbAuth = getAuth(fbApp);
+const fbDb = getFirestore(fbApp);
 
 (function () {
   "use strict";
@@ -57,6 +83,92 @@
       }
     },
   };
+
+  /* ---------- Cloud sync (Firestore) ----------
+     Only the "personal overlay" fields live in Firestore — score, status,
+     firstPlayed, completed, purchaseDate, purchasePrice, steamDeck. Steam-
+     sourced fields (playtime, lastPlayed, title, cover, genre, metacritic)
+     are never written there; they always come fresh from data/*.json via
+     autoSyncFromServer(), the same on every device. Manually-added games
+     (no `appid` — not from Steam) have no other home, so their full record
+     is mirrored to Firestore too. */
+  const CLOUD_FIELDS = ["score", "status", "firstPlayed", "completed", "purchaseDate", "purchasePrice", "steamDeck"];
+  const MANUAL_FIELDS = ["title", "platform", "playtime", "lastPlayed", "genre", "metacritic", "cover", "added"];
+  let currentUser = null;
+
+  function cloudDocData(g) {
+    const data = {};
+    CLOUD_FIELDS.forEach((k) => { data[k] = g[k] != null ? g[k] : null; });
+    if (!g.appid) MANUAL_FIELDS.forEach((k) => { data[k] = g[k] != null ? g[k] : null; });
+    return data;
+  }
+
+  async function cloudPush(ids) {
+    if (!currentUser || !ids || !ids.length) return;
+    try {
+      setSyncStatus("syncing");
+      const batch = writeBatch(fbDb);
+      ids.forEach((id) => {
+        const g = games.find((x) => x.id === id);
+        if (!g) return;
+        batch.set(doc(fbDb, "users", currentUser.uid, "games", id), cloudDocData(g));
+      });
+      await batch.commit();
+      setSyncStatus("synced");
+    } catch (e) {
+      console.warn("Cloud sync failed:", e);
+      setSyncStatus("error");
+    }
+  }
+
+  async function cloudDeleteDoc(id) {
+    if (!currentUser) return;
+    try {
+      await deleteDoc(doc(fbDb, "users", currentUser.uid, "games", id));
+    } catch (e) {
+      console.warn("Cloud delete failed:", e);
+    }
+  }
+
+  // Pull everything from Firestore, overlay onto local games (cloud wins for
+  // personal fields), then push local state back up so both sides end up
+  // reconciled — this doubles as the one-time migration on first sign-in.
+  async function cloudPull() {
+    if (!currentUser) return;
+    setSyncStatus("syncing");
+    try {
+      const snap = await getDocs(collection(fbDb, "users", currentUser.uid, "games"));
+      const byId = new Map(games.map((g) => [g.id, g]));
+      snap.forEach((docSnap) => {
+        const cg = docSnap.data();
+        const id = docSnap.id;
+        const existing = byId.get(id);
+        if (existing) {
+          CLOUD_FIELDS.forEach((k) => { if (cg[k] !== undefined) existing[k] = cg[k]; });
+          if (cg.title != null) MANUAL_FIELDS.forEach((k) => { if (cg[k] !== undefined) existing[k] = cg[k]; });
+        } else if (cg.title) {
+          // Manually-added game that only exists in the cloud so far (e.g. added on another device).
+          const restored = Object.assign({ id }, cg);
+          games.push(restored);
+          byId.set(id, restored);
+        }
+      });
+      store.save(games);
+      await cloudPush(games.map((g) => g.id));   // reconcile: push everything back up
+      setSyncStatus("synced");
+    } catch (e) {
+      console.warn("Cloud pull failed:", e);
+      setSyncStatus("error");
+    }
+  }
+
+  function setSyncStatus(state) {
+    const el = document.getElementById("syncStatus");
+    if (!el) return;
+    const labels = { synced: "Synced", syncing: "Syncing…", error: "Sync error — will retry on next change" };
+    el.className = "user-badge__status user-badge__status--" + state;
+    el.title = labels[state] || "";
+  }
 
   /* ---------- App state ---------- */
   // Starts empty; populate via "Import" (Steam JSON) or "Add game".
@@ -304,6 +416,13 @@
       cover: $("#f_cover").value.trim(),
     };
   }
+  // Save locally (always) and, if signed in, push to Firestore so the
+  // change follows you to other devices. `ids` = which games changed.
+  function persist(ids) {
+    store.save(games);
+    if (currentUser && ids && ids.length) cloudPush(ids);
+  }
+
   function saveGame(e) {
     e.preventDefault();
     const data = readForm();
@@ -311,7 +430,7 @@
     const idx = games.findIndex((g) => g.id === data.id);
     if (idx >= 0) games[idx] = Object.assign({}, games[idx], data);
     else { data.added = Date.now(); games.push(data); }
-    store.save(games);
+    persist([data.id]);
     render();
     closeDialog();
   }
@@ -322,6 +441,7 @@
     if (!confirm(`Delete “${g ? g.title : "this game"}” from your library?`)) return;
     games = games.filter((x) => x.id !== id);
     store.save(games);
+    if (currentUser) cloudDeleteDoc(id);
     render();
     closeDialog();
   }
@@ -385,7 +505,7 @@
       const list = Array.isArray(parsed) ? parsed : parsed.games;
       if (!Array.isArray(list)) { alert("Couldn't find a list of games in that file."); return; }
       const { added, updated } = mergeGames(list);
-      store.save(games);
+      persist(games.map((g) => g.id));   // full reconcile: covers both a Steam re-sync and a backup restore
       recordSnapshot();       // for the daily-playtime graph
       applyFirstPlayed();     // capture first-play transitions
       render();
@@ -569,11 +689,11 @@
         }
       });
     }
-    let changed = false;
+    const changedIds = [];
     games.forEach((g) => {
-      if (!g.firstPlayed && firstTransition[g.id]) { g.firstPlayed = firstTransition[g.id]; changed = true; }
+      if (!g.firstPlayed && firstTransition[g.id]) { g.firstPlayed = firstTransition[g.id]; changedIds.push(g.id); }
     });
-    if (changed) store.save(games);
+    if (changedIds.length) persist(changedIds);
   }
 
   /* ---------- Insights view ---------- */
@@ -1066,7 +1186,7 @@
     if (!confirm(`Set ${f.label} to "${display}" for ${n} game${n === 1 ? "" : "s"}?`)) return;
 
     games.forEach((g) => { if (detailsSelection.has(g.id)) g[f.key] = value; });
-    store.save(games);
+    persist([...detailsSelection]);
     renderDetails();
     render();   // keep Library chips/sections/covers in sync (status/platform may have changed)
   }
@@ -1129,6 +1249,42 @@
     if (ui.view === "insights") renderInsights();
   }
 
+  /* ---------- Auth (sign in to sync personal data across devices) ---------- */
+  function initAuth() {
+    $("#signInBtn").addEventListener("click", async () => {
+      try {
+        await signInWithPopup(fbAuth, new GoogleAuthProvider());
+      } catch (e) {
+        console.warn("Sign-in failed:", e);
+        if (e && e.code !== "auth/popup-closed-by-user") alert("Sign-in failed. Please try again.");
+      }
+    });
+    $("#signOutBtn").addEventListener("click", () => signOut(fbAuth));
+
+    onAuthStateChanged(fbAuth, async (user) => {
+      currentUser = user;
+      updateAuthUI();
+      if (user) {
+        await cloudPull();
+        render();
+        if (ui.view === "insights") renderInsights();
+        else if (ui.view === "year") renderYearReview();
+        else if (ui.view === "details") renderDetails();
+      }
+    });
+  }
+
+  function updateAuthUI() {
+    $("#signInBtn").hidden = !!currentUser;
+    $("#userBadge").hidden = !currentUser;
+    if (currentUser) {
+      $("#userAvatar").src = currentUser.photoURL || "";
+      $("#userAvatar").alt = currentUser.displayName || currentUser.email || "Signed in";
+      $("#signOutBtn").title = `Sign out (${currentUser.email || ""})`;
+      setSyncStatus("synced");
+    }
+  }
+
   /* ---------- Wire up ---------- */
   function init() {
     initTheme();
@@ -1140,6 +1296,7 @@
     $("#addBtn").addEventListener("click", () => openDialog(null));
     $("#themeBtn").addEventListener("click", toggleTheme);
     $("#filterToggle").addEventListener("click", toggleControls);
+    initAuth();
     $("#f_platform").addEventListener("change", updateSteamDeckVisibility);
     $("#exportBtn").addEventListener("click", exportLibrary);
     $("#importBtn").addEventListener("click", () => $("#importFile").click());

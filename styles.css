@@ -111,6 +111,23 @@ body {
 .theme-icon::before { content: "🌙"; }
 html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 
+/* Sign-in / user badge */
+.user-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-elev-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 4px 6px 4px 4px;
+}
+.user-badge__avatar {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--bg-elev);
+  object-fit: cover;
+}
+.user-badge__status {
+  font-size: 9px; line-height: 1; color: var(--text-dim); cursor: default;
+}
+.user-badge__status--synced { color: var(--st-playing); }
+.user-badge__status--syncing { color: var(--accent); }
+.user-badge__status--error { color: var(--danger); }
+
 /* ---------- Stats ---------- */
 .stats { border-bottom: 1px solid var(--border); background: var(--bg); }
 .stats__inner {

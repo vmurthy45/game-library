@@ -32,6 +32,14 @@
         <button id="themeBtn" class="btn btn--icon" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
           <span class="theme-icon" aria-hidden="true"></span>
         </button>
+        <button id="signInBtn" class="btn" type="button" title="Sign in to sync your data across devices">
+          <span aria-hidden="true">☁</span> <span class="btn__text">Sign in</span>
+        </button>
+        <div id="userBadge" class="user-badge" hidden>
+          <img id="userAvatar" class="user-badge__avatar" alt="" referrerpolicy="no-referrer" />
+          <span id="syncStatus" class="user-badge__status" title="">●</span>
+          <button id="signOutBtn" class="btn btn--icon" type="button" title="Sign out">⏻</button>
+        </div>
       </div>
     </div>
   </header>
@@ -281,6 +289,6 @@
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

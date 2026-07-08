@@ -30,6 +30,8 @@ Later phases add cloud sync (Firebase) and automatic library imports (Vercel + S
 - **Export**: JSON backup, **Library CSV**, and **daily Play-time CSV**
 - Responsive (desktop + mobile) and light/dark themes
 - Accessible: keyboard nav, focus styles, ARIA labels, reduced-motion support
+- **Sign in with Google** to sync your personal data (score, status, completion, purchase info,
+  Steam Deck) across devices via Firestore — see "Cloud sync" below
 
 ## Run locally
 
@@ -70,13 +72,27 @@ See **[DEPLOY.md](DEPLOY.md)**. In short: push this folder as a repo, add your
 GitHub Action syncs your library **once a day automatically** — capturing play
 time even when you never open the site. The site auto-loads the committed `data/`.
 
+## Cloud sync (Firebase)
+
+Signing in (Google) syncs your **personal** data — score, status, firstPlayed, completed,
+purchaseDate, purchasePrice, steamDeck — to Firestore, so it follows you across devices.
+Steam-sourced fields (playtime, cover, genre, etc.) are never stored in Firestore; every
+device already gets those fresh from `data/steam_games.json` via the daily sync, so there's
+nothing to duplicate. Manually-added (non-Steam) games are fully mirrored since Firestore is
+their only home.
+
+- Firebase config in `app.js` is meant to be public — security comes from Firestore rules
+  (only the signed-in user can read/write their own `users/{uid}/...` subtree) and sign-in,
+  not from hiding the config.
+- Signed out: app behaves exactly as before (localStorage only, works fully offline).
+- First sign-in on a device does a two-way reconcile: pulls anything already in Firestore,
+  then pushes everything local up — this also acts as the one-time migration.
+
 ## Roadmap
 
 - **Done — Daily sync:** GitHub Actions runs `steam_sync.py` daily and commits
   `data/steam_games.json` + `data/snapshots.json`; the site auto-loads them.
-- **Optional — Cross-device personal data:** Firebase Firestore (free tier) to sync
-  your scores/statuses/completion dates across devices. Swap `store.load`/`store.save`
-  in `app.js` for async Firestore calls; UI unchanged.
+- **Done — Cross-device personal data:** Firebase Firestore, see above.
 - **Optional — PlayStation:** no public play-time API; plan is manual entry /
   PS-Timetracker import as a baseline.
 - **Optional — IGDB:** richer cross-platform metadata than the Steam storefront.
