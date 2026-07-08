@@ -1077,7 +1077,7 @@ const fbDb = getFirestore(fbApp);
     { key: "genre", label: "Genre" },
     { key: "metacritic", label: "MC", numeric: true },
   ];
-  const detailsUi = { search: "", platform: "", status: "", sortKey: "title", sortDir: 1 };
+  const detailsUi = { search: "", platform: "", status: new Set(), sortKey: "title", sortDir: 1 };
   const detailsSelection = new Set();   // selected game ids; independent of current filter
 
   // Fields sensible to bulk-correct across many rows at once.
@@ -1094,7 +1094,7 @@ const fbDb = getFirestore(fbApp);
     const q = detailsUi.search.trim().toLowerCase();
     const list = games.filter((g) => {
       if (detailsUi.platform && g.platform !== detailsUi.platform) return false;
-      if (detailsUi.status && g.status !== detailsUi.status) return false;
+      if (detailsUi.status.size > 0 && !detailsUi.status.has(g.status)) return false;
       if (q && !g.title.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -1130,7 +1130,19 @@ const fbDb = getFirestore(fbApp);
     }
   }
 
+  function renderDetailsStatusChips() {
+    const wrap = $("#detailsStatusChips");
+    wrap.innerHTML = STATUS_ORDER.concat(ARCHIVED).map((s) => {
+      const active = detailsUi.status.has(s);
+      return `<button type="button" class="chip${active ? " chip--active" : ""}" data-status="${escapeHtml(s)}">
+        <span class="chip__dot" style="background:${STATUS_COLORS[s]}"></span>
+        <span class="chip__label">${escapeHtml(s)}</span>
+      </button>`;
+    }).join("");
+  }
+
   function renderDetails() {
+    renderDetailsStatusChips();
     const head = $("#detailsHead");
     head.innerHTML = `<th><input type="checkbox" id="detailsSelectAll" aria-label="Select all visible rows" /></th>` +
       DETAIL_COLS.map((c) => {
@@ -1418,7 +1430,13 @@ const fbDb = getFirestore(fbApp);
       detailsUi.search = $("#detailsSearch").value; renderDetails();
     }, 120));
     $("#detailsPlatform").addEventListener("change", (e) => { detailsUi.platform = e.target.value; renderDetails(); });
-    $("#detailsStatus").addEventListener("change", (e) => { detailsUi.status = e.target.value; renderDetails(); });
+    $("#detailsStatusChips").addEventListener("click", (e) => {
+      const chip = e.target.closest("[data-status]");
+      if (!chip) return;
+      const s = chip.dataset.status;
+      if (detailsUi.status.has(s)) detailsUi.status.delete(s); else detailsUi.status.add(s);
+      renderDetails();
+    });
     $("#detailsCsvBtn").addEventListener("click", exportDetailsCSV);
     $("#detailsHead").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-key]");

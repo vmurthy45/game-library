@@ -339,7 +339,11 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 .filters { display: flex; gap: 10px; flex-wrap: wrap; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field--block { flex: 1 1 auto; }
+.field--chips { flex: 1 1 auto; min-width: 220px; }
 .field__label { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+.field__hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.dchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.dchips .chip { padding: 5px 10px; font-size: 12px; }
 .field__select, .field__input {
   font: inherit; padding: 9px 10px;
   border-radius: var(--radius-sm); border: 1px solid var(--border);

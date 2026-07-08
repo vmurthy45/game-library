@@ -7,7 +7,7 @@
   <title>Vig's Gaming Library</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiM1YjhkZWYiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksLWFwcGxlLXN5c3RlbSxTZWdvZSBVSSxSb2JvdG8sc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNyIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iI2ZmZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Vkc8L3RleHQ+PC9zdmc+" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -142,18 +142,10 @@
               <option value="Other">Other</option>
             </select>
           </label>
-          <label class="field">
-            <span class="field__label">Status</span>
-            <select id="detailsStatus" class="field__select">
-              <option value="">All statuses</option>
-              <option value="Currently Playing">Currently Playing</option>
-              <option value="Evergreen">Evergreen</option>
-              <option value="Backlog">Backlog</option>
-              <option value="Finished">Finished</option>
-              <option value="Shelved">Shelved</option>
-              <option value="Archived">Archived</option>
-            </select>
-          </label>
+          <div class="field field--chips">
+            <span class="field__label">Status <span class="field__hint">(any of)</span></span>
+            <div id="detailsStatusChips" class="dchips" role="group" aria-label="Filter by status"></div>
+          </div>
         </div>
         <button id="detailsCsvBtn" class="btn" type="button">
           <span aria-hidden="true">⬇</span> <span class="btn__text">Export CSV</span>
@@ -291,6 +283,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="app.js?v=7"></script>
+  <script type="module" src="app.js?v=8"></script>
 </body>
 </html>
