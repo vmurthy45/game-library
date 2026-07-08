@@ -1019,7 +1019,9 @@ const fbDb = getFirestore(fbApp);
   function computeCostPerHour(data) {
     const priced = data.filter((g) => g.purchasePrice != null);
     const played = priced.filter((g) => (g.playtime || 0) > 0);
-    const ranked = played.map((g) => ({ g, cph: g.purchasePrice / g.playtime })).sort((a, b) => a.cph - b.cph);
+    // Shared pricePerHour() caps games under 1h played at their flat price
+    // instead of a wildly inflated rate (e.g. $10.99 / 0.2h = $54.95/h).
+    const ranked = played.map((g) => ({ g, cph: pricePerHour(g) })).sort((a, b) => a.cph - b.cph);
     const totalHours = played.reduce((s, g) => s + g.playtime, 0);
     const totalSpentPlayed = played.reduce((s, g) => s + g.purchasePrice, 0);
     return {
