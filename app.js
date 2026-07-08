@@ -38,6 +38,7 @@ const fbDb = getFirestore(fbApp);
   const THEME_KEY = "gameLibrary.theme";
   const COLLAPSE_KEY = "gameLibrary.collapsed";
   const SNAP_KEY = "gameLibrary.snapshots.v1";
+  const GOALS_KEY = "gameLibrary.goals.v1";
 
   // Display order for chips & sections (Archived is separate — hidden from
   // the default view and excluded from all reports).
@@ -171,6 +172,63 @@ const fbDb = getFirestore(fbApp);
     const labels = { synced: "Synced", syncing: "Syncing…", error: "Sync error — will retry on next change" };
     el.className = "user-badge__status user-badge__status--" + state;
     el.title = labels[state] || "";
+  }
+
+  /* ---------- Goals ----------
+     Freeform, entirely user-authored (no Steam-sourced counterpart), so the
+     whole record is mirrored to Firestore — simpler than the games sync,
+     no field-splitting needed. */
+  const goalStore = {
+    load() {
+      try { return JSON.parse(localStorage.getItem(GOALS_KEY)) || []; }
+      catch (e) { return []; }
+    },
+    save(list) {
+      try { localStorage.setItem(GOALS_KEY, JSON.stringify(list)); }
+      catch (e) { console.error("Could not save goals:", e); }
+    },
+  };
+  let goals = goalStore.load();
+
+  function persistGoals(ids) {
+    goalStore.save(goals);
+    if (currentUser && ids && ids.length) cloudPushGoals(ids);
+  }
+  async function cloudPushGoals(ids) {
+    if (!currentUser || !ids || !ids.length) return;
+    try {
+      const batch = writeBatch(fbDb);
+      ids.forEach((id) => {
+        const g = goals.find((x) => x.id === id);
+        if (!g) return;
+        batch.set(doc(fbDb, "users", currentUser.uid, "goals", id), g);
+      });
+      await batch.commit();
+    } catch (e) {
+      console.warn("Cloud goal sync failed:", e);
+    }
+  }
+  async function cloudDeleteGoalDoc(id) {
+    if (!currentUser) return;
+    try { await deleteDoc(doc(fbDb, "users", currentUser.uid, "goals", id)); }
+    catch (e) { console.warn("Cloud goal delete failed:", e); }
+  }
+  async function cloudPullGoals() {
+    if (!currentUser) return;
+    try {
+      const snap = await getDocs(collection(fbDb, "users", currentUser.uid, "goals"));
+      const byId = new Map(goals.map((g) => [g.id, g]));
+      snap.forEach((docSnap) => {
+        const cg = docSnap.data();
+        const id = docSnap.id;
+        if (byId.has(id)) Object.assign(byId.get(id), cg);
+        else { const restored = Object.assign({ id }, cg); goals.push(restored); byId.set(id, restored); }
+      });
+      goalStore.save(goals);
+      await cloudPushGoals(goals.map((g) => g.id));   // reconcile, same pattern as games
+    } catch (e) {
+      console.warn("Cloud goal pull failed:", e);
+    }
   }
 
   /* ---------- App state ---------- */
@@ -1239,6 +1297,45 @@ const fbDb = getFirestore(fbApp);
       `game-library-details-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
+  /* ---------- Goals view ---------- */
+  function renderGoals() {
+    const list = goals.slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;          // active first
+      return (a.targetDate || "9999").localeCompare(b.targetDate || "9999");
+    });
+    $("#goalsEmpty").hidden = list.length > 0;
+    $("#goalsList").innerHTML = list.map((g) => `
+      <div class="goal${g.done ? " goal--done" : ""}" data-id="${g.id}">
+        <button type="button" class="goal__check" aria-label="${g.done ? "Mark not done" : "Mark done"}">${g.done ? "✓" : ""}</button>
+        <span class="goal__text">${escapeHtml(g.text)}</span>
+        ${g.targetDate ? `<span class="goal__date">${fmtDate(g.targetDate)}</span>` : ""}
+        <button type="button" class="goal__delete" aria-label="Delete goal">✕</button>
+      </div>`).join("");
+  }
+  function addGoal(text, targetDate) {
+    const g = { id: uid(), text: text.slice(0, 200), targetDate: targetDate || "", done: false, completedAt: "", added: Date.now() };
+    goals.push(g);
+    persistGoals([g.id]);
+    renderGoals();
+  }
+  function toggleGoalDone(id) {
+    const g = goals.find((x) => x.id === id);
+    if (!g) return;
+    g.done = !g.done;
+    g.completedAt = g.done ? new Date().toISOString().slice(0, 10) : "";
+    persistGoals([id]);
+    renderGoals();
+  }
+  function deleteGoal(id) {
+    const g = goals.find((x) => x.id === id);
+    if (!g) return;
+    if (!confirm(`Delete goal “${g.text}”?`)) return;
+    goals = goals.filter((x) => x.id !== id);
+    goalStore.save(goals);
+    if (currentUser) cloudDeleteGoalDoc(id);
+    renderGoals();
+  }
+
   /* ---------- Tabs ---------- */
   function switchView(view) {
     ui.view = view;
@@ -1246,6 +1343,7 @@ const fbDb = getFirestore(fbApp);
     $("#insightsView").hidden = view !== "insights";
     $("#yearView").hidden = view !== "year";
     $("#detailsView").hidden = view !== "details";
+    $("#goalsView").hidden = view !== "goals";
     $("#filterToggle").hidden = view !== "library";
     document.querySelectorAll(".tab").forEach((t) => {
       const active = t.dataset.view === view;
@@ -1255,6 +1353,7 @@ const fbDb = getFirestore(fbApp);
     if (view === "insights") renderInsights();
     else if (view === "year") renderYearReview();
     else if (view === "details") renderDetails();
+    else if (view === "goals") renderGoals();
   }
   function toggleControls() {
     const c = $("#controls");
@@ -1314,11 +1413,12 @@ const fbDb = getFirestore(fbApp);
       currentUser = user;
       updateAuthUI();
       if (user) {
-        await cloudPull();
+        await Promise.all([cloudPull(), cloudPullGoals()]);
         render();
         if (ui.view === "insights") renderInsights();
         else if (ui.view === "year") renderYearReview();
         else if (ui.view === "details") renderDetails();
+        else if (ui.view === "goals") renderGoals();
       }
     });
   }
@@ -1465,6 +1565,24 @@ const fbDb = getFirestore(fbApp);
       if (cb.checked) detailsSelection.add(cb.dataset.id); else detailsSelection.delete(cb.dataset.id);
       updateSelectAllState();
       renderBulkBar();
+    });
+
+    // Goals
+    $("#goalForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = $("#goalText").value.trim();
+      if (!text) return;
+      addGoal(text, $("#goalDate").value);
+      $("#goalText").value = "";
+      $("#goalDate").value = "";
+      $("#goalText").focus();
+    });
+    $("#goalsList").addEventListener("click", (e) => {
+      const row = e.target.closest(".goal");
+      if (!row) return;
+      const id = row.dataset.id;
+      if (e.target.closest(".goal__check")) toggleGoalDone(id);
+      else if (e.target.closest(".goal__delete")) deleteGoal(id);
     });
   }
 

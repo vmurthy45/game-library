@@ -35,6 +35,8 @@ Later phases add cloud sync (Firebase) and automatic library imports (Vercel + S
 - Accessible: keyboard nav, focus styles, ARIA labels, reduced-motion support
 - **Sign in with Google** to sync your personal data (score, status, completion, purchase info,
   Steam Deck) across devices via Firestore — see "Cloud sync" below
+- **Goals tab**: a freeform list for anything ("Finish 10 games this year", "Beat Elden Ring
+  before the DLC") — check off when done, syncs the same way as your other personal data
 
 ## Run locally
 

@@ -7,7 +7,7 @@
   <title>Vig's Gaming Library</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiM1YjhkZWYiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksLWFwcGxlLXN5c3RlbSxTZWdvZSBVSSxSb2JvdG8sc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNyIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iI2ZmZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Vkc8L3RleHQ+PC9zdmc+" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -51,6 +51,7 @@
       <button class="tab" type="button" data-view="insights">Insights</button>
       <button class="tab" type="button" data-view="year">Year in Review</button>
       <button class="tab" type="button" data-view="details">Details</button>
+      <button class="tab" type="button" data-view="goals">Goals</button>
       <button id="filterToggle" class="tabs__filter" type="button" aria-expanded="false" aria-controls="controls">
         <span aria-hidden="true">⚲</span>
         <span class="btn__text btn__text--desktop">Search &amp; Sort</span>
@@ -160,6 +161,24 @@
           <thead><tr id="detailsHead"></tr></thead>
           <tbody id="detailsBody"></tbody>
         </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================= GOALS VIEW ========================= -->
+  <div id="goalsView" hidden>
+    <main class="main">
+      <form id="goalForm" class="goal-form">
+        <label class="sr-only" for="goalText">New goal</label>
+        <input id="goalText" class="field__input" type="text" maxlength="200" placeholder="e.g. Finish Baldur's Gate 3 by December" required />
+        <label class="sr-only" for="goalDate">Target date (optional)</label>
+        <input id="goalDate" class="field__input goal-form__date" type="date" title="Target date (optional)" />
+        <button type="submit" class="btn btn--primary">Add goal</button>
+      </form>
+      <div id="goalsList" class="goals-list"></div>
+      <div id="goalsEmpty" class="empty" hidden>
+        <p class="empty__title">No goals yet</p>
+        <p class="empty__hint">Add one above — anything from "Finish 10 games this year" to "Beat Elden Ring before the DLC drops."</p>
       </div>
     </main>
   </div>
@@ -283,6 +302,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="app.js?v=8"></script>
+  <script type="module" src="app.js?v=9"></script>
 </body>
 </html>

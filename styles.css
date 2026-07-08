@@ -306,6 +306,33 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 }
 .bulkbar__count { font-weight: 700; font-size: 13px; white-space: nowrap; }
 
+/* ---------- Goals ---------- */
+.goal-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.goal-form .field__input { flex: 1 1 300px; }
+.goal-form__date { flex: 0 0 auto; width: 160px; }
+.goals-list { display: flex; flex-direction: column; gap: 8px; }
+.goal {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.goal__check {
+  width: 22px; height: 22px; flex: 0 0 auto; border-radius: 50%;
+  border: 2px solid var(--border); background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--st-playing); padding: 0;
+}
+.goal__check:hover { border-color: var(--st-playing); }
+.goal--done .goal__check { background: var(--st-playing); border-color: var(--st-playing); color: #fff; }
+.goal__text { flex: 1; font-size: 14px; word-break: break-word; }
+.goal--done .goal__text { text-decoration: line-through; color: var(--text-dim); }
+.goal__date { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.goal__delete {
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 14px; padding: 4px; flex: 0 0 auto; line-height: 1;
+}
+.goal__delete:hover { color: var(--danger); }
+
 .hbars { display: flex; flex-direction: column; gap: 8px; }
 .hbar { display: grid; grid-template-columns: 130px 1fr 52px; align-items: center; gap: 10px; }
 .hbar__label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
