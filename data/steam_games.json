@@ -1009,7 +1009,9 @@
     "genre": "Action",
     "metacritic": 85,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/19900/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2011-11-24",
+    "purchasePrice": 18.41
   },
   {
     "id": "steam_11020",
@@ -1719,7 +1721,7 @@
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/22300/header.jpg",
     "added": 1783454308599,
     "purchaseDate": "2011-11-24",
-    "purchasePrice": 29.4
+    "purchasePrice": 10.99
   },
   {
     "id": "steam_113200",
