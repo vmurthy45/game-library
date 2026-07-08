@@ -265,7 +265,9 @@
     "genre": "Racing",
     "metacritic": 87,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/24740/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-07-21",
+    "purchasePrice": 4.39
   },
   {
     "id": "steam_12210",
@@ -279,7 +281,9 @@
     "genre": "Action, Adventure",
     "metacritic": 90,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/12210/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2011-10-24",
+    "purchasePrice": 7.47
   },
   {
     "id": "steam_1145350",
@@ -309,7 +313,9 @@
     "genre": "Casual",
     "metacritic": 76,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/8400/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2011-09-08",
+    "purchasePrice": 4.39
   },
   {
     "id": "steam_35140",
@@ -323,7 +329,9 @@
     "genre": "Action, Adventure",
     "metacritic": 91,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/35140/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-05-04",
+    "purchasePrice": 7.48
   },
   {
     "id": "steam_42690",
@@ -351,7 +359,9 @@
     "genre": "Action, Free To Play",
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
-    "added": 1783454308598
+    "added": 1783454308598,
+    "purchaseDate": "2012-08-08",
+    "purchasePrice": 14.84
   },
   {
     "id": "steam_24240",
@@ -395,7 +405,9 @@
     "genre": "Action, Adventure",
     "metacritic": 86,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/391220/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2025-12-15",
+    "purchasePrice": 3.99
   },
   {
     "id": "steam_271590",
@@ -409,7 +421,9 @@
     "genre": "Action, Adventure",
     "metacritic": 96,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/271590/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2024-06-28",
+    "purchasePrice": 27.25
   },
   {
     "id": "steam_2742830",
@@ -472,8 +486,8 @@
     "metacritic": 91,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/205100/header.jpg",
     "added": 1783454308599,
-    "purchaseDate": "2013-12-23",
-    "purchasePrice": 24.74
+    "purchaseDate": null,
+    "purchasePrice": null
   },
   {
     "id": "steam_686060",
@@ -642,8 +656,8 @@
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/28050/header.jpg",
     "added": 1783454308599,
-    "purchaseDate": "2013-01-01",
-    "purchasePrice": 6.86
+    "purchaseDate": null,
+    "purchasePrice": null
   },
   {
     "id": "steam_1318690",
@@ -689,7 +703,9 @@
     "genre": "Action, Adventure",
     "metacritic": 77,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/750920/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2025-12-15",
+    "purchasePrice": 5.31
   },
   {
     "id": "steam_1086940",
@@ -811,7 +827,9 @@
     "genre": "Action, Adventure",
     "metacritic": 74,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/209000/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2014-06-30",
+    "purchasePrice": 8.24
   },
   {
     "id": "steam_17300",
@@ -1093,7 +1111,9 @@
     "genre": "Indie, RPG",
     "metacritic": 78,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/107310/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-08-30",
+    "purchasePrice": 0.82
   },
   {
     "id": "steam_204100",
@@ -1297,7 +1317,7 @@
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/40700/header.jpg",
     "added": 1783454308599,
     "purchaseDate": "2011-11-21",
-    "purchasePrice": 2.74
+    "purchasePrice": 8.23
   },
   {
     "id": "steam_40930",
@@ -1373,7 +1393,9 @@
     "genre": "Action, Adventure",
     "metacritic": 91,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/57400/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-05-04",
+    "purchasePrice": 16.49
   },
   {
     "id": "steam_201790",
@@ -1387,7 +1409,9 @@
     "genre": "Action, Adventure",
     "metacritic": 83,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/201790/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2013-07-18",
+    "purchasePrice": 4.11
   },
   {
     "id": "steam_107100",
@@ -1401,7 +1425,9 @@
     "genre": "Action, Indie",
     "metacritic": 86,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/107100/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-05-04",
+    "purchasePrice": 6.59
   },
   {
     "id": "steam_219890",
@@ -1477,7 +1503,9 @@
     "genre": "Action, Indie",
     "metacritic": 81,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/70300/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2011-11-21",
+    "purchasePrice": 2.74
   },
   {
     "id": "steam_219150",
@@ -1857,7 +1885,9 @@
     "genre": "Casual, Indie",
     "metacritic": 90,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/26800/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2011-11-21",
+    "purchasePrice": 5.49
   },
   {
     "id": "steam_42700",
@@ -1913,7 +1943,9 @@
     "genre": "Action",
     "metacritic": 81,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/237110/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2014-06-23",
+    "purchasePrice": 5.49
   },
   {
     "id": "steam_403640",
@@ -2051,7 +2083,9 @@
     "genre": "Indie",
     "metacritic": 90,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/22000/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2011-11-21",
+    "purchasePrice": 5.49
   },
   {
     "id": "steam_200260",
@@ -2155,7 +2189,9 @@
     "genre": "Adventure",
     "metacritic": 87,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/32460/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-12-22",
+    "purchasePrice": 2.06
   },
   {
     "id": "steam_91200",
@@ -2579,7 +2615,9 @@
     "genre": "Simulation, Strategy",
     "metacritic": 79,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/23490/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2013-07-18",
+    "purchasePrice": 2.19
   },
   {
     "id": "steam_25500",
@@ -2855,7 +2893,9 @@
     "genre": "Adventure",
     "metacritic": 86,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/32360/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-12-22",
+    "purchasePrice": 2.06
   },
   {
     "id": "steam_42680",
@@ -3065,7 +3105,9 @@
     "genre": "Action, Casual",
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/96100/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2014-06-30",
+    "purchasePrice": 0.32
   },
   {
     "id": "steam_102600",
@@ -3123,7 +3165,9 @@
     "genre": "Indie, RPG",
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/107300/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2012-08-30",
+    "purchasePrice": 0.82
   },
   {
     "id": "steam_107800",
@@ -3253,7 +3297,9 @@
     "genre": "Indie",
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/211440/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2014-06-30",
+    "purchasePrice": 0.54
   },
   {
     "id": "steam_222660",
@@ -3267,7 +3313,9 @@
     "genre": "Action, Indie",
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/222660/header.jpg",
-    "added": 1783454308599
+    "added": 1783454308599,
+    "purchaseDate": "2014-06-30",
+    "purchasePrice": 1.09
   },
   {
     "id": "steam_228200",
