@@ -1262,10 +1262,14 @@ const fbDb = getFirestore(fbApp);
   function formatMoney(n) {
     return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  // null when there's no price or no play time to divide by (can't compute a rate).
+  // null when there's no price at all. Under 1h played, dividing by a tiny
+  // fraction of an hour produces a wildly inflated rate, so just show the
+  // flat purchase price instead of a misleading number.
   function pricePerHour(g) {
-    if (g.purchasePrice == null || !(g.playtime > 0)) return null;
-    return g.purchasePrice / g.playtime;
+    if (g.purchasePrice == null) return null;
+    const hours = Number(g.playtime) || 0;
+    if (hours < 1) return g.purchasePrice;
+    return g.purchasePrice / hours;
   }
   function debounce(fn, ms) { let t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
