@@ -109,6 +109,8 @@ def to_model(g):
         "metacritic": None,
         "cover": f"{CDN}/{appid}/header.jpg",
         "added": int(time.time() * 1000),
+        "purchaseDate": None,
+        "purchasePrice": None,
     }
 
 
@@ -213,8 +215,9 @@ def main():
 
 
 def carry_over_metadata(games_path, games):
-    """Copy genre/Metacritic from a previous steam_games.json onto matching games,
-    so we don't re-scrape metadata that doesn't change."""
+    """Copy genre/Metacritic/purchase info from a previous steam_games.json onto
+    matching games, so we don't re-scrape metadata that doesn't change and don't
+    lose one-time-imported purchase history on the next daily run."""
     try:
         with open(games_path, "r", encoding="utf-8") as f:
             prev = json.load(f)
@@ -229,6 +232,10 @@ def carry_over_metadata(games_path, games):
             g["genre"] = old["genre"]
         if g["metacritic"] is None and old.get("metacritic") is not None:
             g["metacritic"] = old["metacritic"]
+        if old.get("purchaseDate") is not None:
+            g["purchaseDate"] = old["purchaseDate"]
+        if old.get("purchasePrice") is not None:
+            g["purchasePrice"] = old["purchasePrice"]
 
 
 def update_snapshots(path, games):

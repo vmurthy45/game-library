@@ -26,7 +26,10 @@ Later phases add cloud sync (Firebase) and automatic library imports (Vercel + S
 - **Year in Review tab**: a separate per-year recap (hours, finished/started/added, avg score, spend, highlights) — kept out of the main Insights view since it's only relevant once a year
 - **Details tab**: full metadata in a sortable, filterable table (search, platform, status), with its own **CSV export** of the filtered rows, plus **bulk edit** — select rows (or "select all" within the current filter) and batch-set Status, Platform, Genre, Metacritic, or Steam Deck across all selected games at once
 - Add / edit / delete via dialog
-- **Import** a Steam library (see `tools/steam_sync.py`) — merges in, preserving your scores/statuses
+- **Import** a Steam library (see `tools/steam_sync.py`) — merges in, preserving your scores/statuses.
+  If new hours are logged on a **Backlog / Finished / Shelved** game, its status auto-promotes to
+  **Currently Playing** (Evergreen, Currently Playing, and Archived are left alone — Archived
+  deliberately never comes back into view this way)
 - **Export**: JSON backup, **Library CSV**, and **daily Play-time CSV**
 - Responsive (desktop + mobile) and light/dark themes
 - Accessible: keyboard nav, focus styles, ARIA labels, reduced-motion support
@@ -52,6 +55,9 @@ python3 tools/steam_sync.py --metadata # + genre/Metacritic (throttled)
 ```
 
 This writes `tools/steam_games.json`. In the app, click **Import** and pick that file.
+`purchaseDate`/`purchasePrice` (once set, e.g. from a one-time Steam transaction-history import)
+are carried forward by `carry_over_metadata()` on every daily run, same as genre/Metacritic —
+they're never re-derived automatically and never overwrite a value you've since edited yourself.
 Re-running later refreshes play time / last-played without touching your scores or statuses.
 See the header of `tools/steam_sync.py` for how to get a (free) Steam API key and SteamID64.
 
@@ -64,6 +70,10 @@ See the header of `tools/steam_sync.py` for how to get a (free) Steam API key an
 | `app.js` | State, localStorage, rendering, filtering, import/export, insights, auto-sync |
 | `tools/steam_sync.py` | Fetches your Steam library → `steam_games.json` (+ `--out data` for the daily job) |
 | `.github/workflows/steam-sync.yml` | Daily GitHub Action that syncs Steam and commits `data/` |
+
+**Note:** `styles.css` and `app.js` are loaded with a `?v=N` cache-busting query string in
+`index.html`. Bump `N` whenever either file changes, or browsers/phones may keep serving a
+stale cached copy after a deploy.
 
 ## Deploy + daily sync
 

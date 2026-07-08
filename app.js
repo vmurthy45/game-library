@@ -44,6 +44,9 @@ const fbDb = getFirestore(fbApp);
   const STATUS_ORDER = ["Currently Playing", "Evergreen", "Backlog", "Finished", "Shelved"];
   const ARCHIVED = "Archived";
   const STATUSES = STATUS_ORDER.concat(ARCHIVED);
+  // Statuses that auto-promote to "Currently Playing" when a sync detects new
+  // hours logged — Evergreen/Currently Playing/Archived are deliberately excluded.
+  const AUTO_PROMOTE_STATUSES = ["Backlog", "Finished", "Shelved"];
   const STATUS_COLORS = {
     "Currently Playing": "var(--st-playing)",
     "Evergreen": "var(--st-evergreen)",
@@ -453,6 +456,7 @@ const fbDb = getFirestore(fbApp);
   function mergeGames(incoming) {
     const byId = new Map(games.map((g) => [g.id, g]));
     let added = 0, updated = 0;
+    const autoStarted = [];   // ids auto-promoted to "Currently Playing" this merge
     incoming.forEach((raw) => {
       const inc = normalizeImported(raw);
       if (!inc || !inc.title) return;
@@ -460,17 +464,27 @@ const fbDb = getFirestore(fbApp);
       if (!existing) {
         games.push(inc); byId.set(inc.id, inc); added++;
       } else {
+        const gainedPlaytime = (inc.playtime || 0) > (existing.playtime || 0);
         existing.playtime = inc.playtime;                 // Steam = source of truth
         if (inc.lastPlayed) existing.lastPlayed = inc.lastPlayed;
         if (inc.title) existing.title = inc.title;
         if (!existing.cover && inc.cover) existing.cover = inc.cover;
         if (!existing.genre && inc.genre) existing.genre = inc.genre;
         if (existing.metacritic == null && inc.metacritic != null) existing.metacritic = inc.metacritic;
-        // score & status are USER data — untouched.
+        // Seed purchase info from a one-time historical import, but never
+        // overwrite a value the user has already set (manually or via Firestore).
+        if (!existing.purchaseDate && inc.purchaseDate) existing.purchaseDate = inc.purchaseDate;
+        if (existing.purchasePrice == null && inc.purchasePrice != null) existing.purchasePrice = inc.purchasePrice;
+        // score & status are otherwise USER data — untouched, except: new hours
+        // logged on a Backlog/Finished/Shelved game means they picked it back up.
+        if (gainedPlaytime && AUTO_PROMOTE_STATUSES.includes(existing.status)) {
+          existing.status = "Currently Playing";
+          autoStarted.push(existing.id);
+        }
         updated++;
       }
     });
-    return { added, updated };
+    return { added, updated, autoStarted };
   }
   function normalizeImported(raw) {
     if (!raw || typeof raw !== "object" || !raw.title) return null;
@@ -504,12 +518,14 @@ const fbDb = getFirestore(fbApp);
       catch (e) { alert("That file isn't valid JSON. Pick the steam_games.json the script produced."); return; }
       const list = Array.isArray(parsed) ? parsed : parsed.games;
       if (!Array.isArray(list)) { alert("Couldn't find a list of games in that file."); return; }
-      const { added, updated } = mergeGames(list);
+      const { added, updated, autoStarted } = mergeGames(list);
       persist(games.map((g) => g.id));   // full reconcile: covers both a Steam re-sync and a backup restore
       recordSnapshot();       // for the daily-playtime graph
       applyFirstPlayed();     // capture first-play transitions
       render();
-      alert(`Import complete:\n• ${added} new game${added === 1 ? "" : "s"} added\n• ${updated} existing updated (your scores & statuses kept)`);
+      let msg = `Import complete:\n• ${added} new game${added === 1 ? "" : "s"} added\n• ${updated} existing updated`;
+      if (autoStarted.length) msg += `\n• ${autoStarted.length} moved to Currently Playing (new hours logged)`;
+      alert(msg);
     };
     reader.onerror = () => alert("Could not read that file.");
     reader.readAsText(file);
@@ -588,7 +604,12 @@ const fbDb = getFirestore(fbApp);
       }
       if (gRes && gRes.ok) {
         const list = await gRes.json();
-        if (Array.isArray(list)) { mergeGames(list); store.save(games); changed = true; }
+        if (Array.isArray(list)) {
+          const { autoStarted } = mergeGames(list);
+          store.save(games);
+          if (autoStarted.length) cloudPush(autoStarted);   // status is a personal field — sync the auto-promotion
+          changed = true;
+        }
       }
       if (changed) {
         applyFirstPlayed();
