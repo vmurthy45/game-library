@@ -1072,6 +1072,7 @@ const fbDb = getFirestore(fbApp);
     { key: "completed", label: "Completed" },
     { key: "purchaseDate", label: "Purchased" },
     { key: "purchasePrice", label: "Price", numeric: true },
+    { key: "pricePerHour", label: "$/h", numeric: true },
     { key: "steamDeck", label: "Deck" },
     { key: "genre", label: "Genre" },
     { key: "metacritic", label: "MC", numeric: true },
@@ -1100,7 +1101,8 @@ const fbDb = getFirestore(fbApp);
     const col = detailsUi.sortKey;
     const dir = detailsUi.sortDir;
     list.sort((a, b) => {
-      let av = a[col], bv = b[col];
+      let av = col === "pricePerHour" ? pricePerHour(a) : a[col];
+      let bv = col === "pricePerHour" ? pricePerHour(b) : b[col];
       if (DETAIL_COLS.find((c) => c.key === col).numeric) {
         av = av == null ? -Infinity : Number(av);
         bv = bv == null ? -Infinity : Number(bv);
@@ -1121,6 +1123,7 @@ const fbDb = getFirestore(fbApp);
       case "firstPlayed": case "lastPlayed": case "completed": case "purchaseDate":
         return fmtDate(g[col.key]);
       case "purchasePrice": return g.purchasePrice != null ? formatMoney(g.purchasePrice) : "—";
+      case "pricePerHour": { const p = pricePerHour(g); return p != null ? formatMoney(p) + "/h" : "—"; }
       case "steamDeck": return g.steamDeck ? "✓" : "";
       case "metacritic": return g.metacritic != null ? g.metacritic : "—";
       default: return escapeHtml(g[col.key] || "—");
@@ -1217,6 +1220,7 @@ const fbDb = getFirestore(fbApp);
     const header = DETAIL_COLS.map((c) => c.label).join(",");
     const rows = list.map((g) => DETAIL_COLS.map((c) => {
       if (c.key === "steamDeck") return csvCell(g.steamDeck ? "Yes" : "");
+      if (c.key === "pricePerHour") { const p = pricePerHour(g); return csvCell(p != null ? p.toFixed(2) : ""); }
       return csvCell(g[c.key] != null ? g[c.key] : "");
     }).join(","));
     downloadBlob(header + "\n" + rows.join("\n"), "text/csv",
@@ -1257,6 +1261,11 @@ const fbDb = getFirestore(fbApp);
   function clamp(n, lo, hi) { if (n == null || isNaN(n)) return null; return Math.min(hi, Math.max(lo, n)); }
   function formatMoney(n) {
     return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // null when there's no price or no play time to divide by (can't compute a rate).
+  function pricePerHour(g) {
+    if (g.purchasePrice == null || !(g.playtime > 0)) return null;
+    return g.purchasePrice / g.playtime;
   }
   function debounce(fn, ms) { let t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
