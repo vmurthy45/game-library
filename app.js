@@ -107,6 +107,17 @@ const fbDb = getFirestore(fbApp);
     return data;
   }
 
+  // A blank/null value from Firestore must never overwrite real local data —
+  // this is what caused purchase history to vanish on sign-in: an early
+  // reconcile-push (before purchase data existed) wrote explicit `null`s to
+  // Firestore, and every pull since then treated those nulls as authoritative
+  // and wiped out purchase data added later via a direct data-file update.
+  // Self-healing: once this stops happening, the next sign-in's reconcile
+  // push will overwrite those stale Firestore nulls with the real local data.
+  function applyCloudFields(target, cloudDoc, keys) {
+    keys.forEach((k) => { if (cloudDoc[k] != null) target[k] = cloudDoc[k]; });
+  }
+
   async function cloudPush(ids) {
     if (!currentUser || !ids || !ids.length) return;
     try {
@@ -148,8 +159,8 @@ const fbDb = getFirestore(fbApp);
         const id = docSnap.id;
         const existing = byId.get(id);
         if (existing) {
-          CLOUD_FIELDS.forEach((k) => { if (cg[k] !== undefined) existing[k] = cg[k]; });
-          if (cg.title != null) MANUAL_FIELDS.forEach((k) => { if (cg[k] !== undefined) existing[k] = cg[k]; });
+          applyCloudFields(existing, cg, CLOUD_FIELDS);
+          if (cg.title != null) applyCloudFields(existing, cg, MANUAL_FIELDS);
         } else if (cg.title) {
           // Manually-added game that only exists in the cloud so far (e.g. added on another device).
           const restored = Object.assign({ id }, cg);
@@ -221,7 +232,7 @@ const fbDb = getFirestore(fbApp);
       snap.forEach((docSnap) => {
         const cg = docSnap.data();
         const id = docSnap.id;
-        if (byId.has(id)) Object.assign(byId.get(id), cg);
+        if (byId.has(id)) applyCloudFields(byId.get(id), cg, Object.keys(cg));
         else { const restored = Object.assign({ id }, cg); goals.push(restored); byId.set(id, restored); }
       });
       goalStore.save(goals);
