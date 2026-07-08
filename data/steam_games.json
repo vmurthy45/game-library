@@ -486,8 +486,8 @@
     "metacritic": 91,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/205100/header.jpg",
     "added": 1783454308599,
-    "purchaseDate": null,
-    "purchasePrice": null
+    "purchaseDate": "2013-12-23",
+    "purchasePrice": 24.74
   },
   {
     "id": "steam_686060",
@@ -656,8 +656,8 @@
     "metacritic": null,
     "cover": "https://cdn.cloudflare.steamstatic.com/steam/apps/28050/header.jpg",
     "added": 1783454308599,
-    "purchaseDate": null,
-    "purchasePrice": null
+    "purchaseDate": "2013-01-01",
+    "purchasePrice": 6.86
   },
   {
     "id": "steam_1318690",
