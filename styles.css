@@ -198,6 +198,9 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 .yr__list li span { color: var(--text-dim); font-size: 12px; }
 .yr__pick { margin: 0; font-weight: 700; }
 .yr__pick span { color: var(--accent); font-weight: 600; }
+.yr__lists { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 18px; }
+.yr__listblock .icard__title { margin-bottom: 10px; }
+.yr__scroll { max-height: 320px; overflow-y: auto; }
 
 /* Insights header actions */
 .insights__head { display: flex; justify-content: flex-end; margin-bottom: 14px; }
@@ -503,6 +506,7 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
   .hbar { grid-template-columns: 96px 1fr 46px; }
   .yr__stats { grid-template-columns: repeat(2, 1fr); }
   .yr__cols { grid-template-columns: 1fr; }
+  .yr__lists { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -885,9 +885,14 @@ const fbDb = getFirestore(fbApp);
 
     const hoursByGame = computeGameHoursForYear(year);
     const hoursThisYear = Object.values(hoursByGame).reduce((s, h) => s + h, 0);
-    const topByHours = Object.keys(hoursByGame)
+    const playedThisYear = Object.keys(hoursByGame)
       .map((id) => ({ g: games.find((x) => x.id === id), h: hoursByGame[id] }))
-      .filter((x) => x.g).sort((a, b) => b.h - a.h).slice(0, 5);
+      .filter((x) => x.g).sort((a, b) => b.h - a.h);
+    const topByHours = playedThisYear.slice(0, 5);
+    const playedIds = new Set(playedThisYear.map((x) => x.g.id));
+    // Bought this year but no hours logged this year (even if played later).
+    const purchasedNotPlayed = data.filter((g) => inYear(g.purchaseDate) && !playedIds.has(g.id))
+      .sort((a, b) => a.purchaseDate.localeCompare(b.purchaseDate));
 
     const topRated = finishedThisYear.slice().sort((a, b) => (b.score || 0) - (a.score || 0))[0];
 
@@ -921,6 +926,22 @@ const fbDb = getFirestore(fbApp);
       highlights = `<p class="icard__empty">No completions or tracked play time recorded for ${y} yet. Set completion dates on games, and daily hours will accrue as syncs run.</p>`;
     }
 
+    const playedTable = playedThisYear.length
+      ? `<div class="table-wrap yr__scroll"><table class="mtable">
+          <thead><tr><th>Game</th><th>Hours in ${y}</th></tr></thead>
+          <tbody>${playedThisYear.map((x) =>
+            `<tr><td>${escapeHtml(x.g.title)}</td><td>${fmtHours(x.h)}</td></tr>`).join("")}</tbody>
+        </table></div>`
+      : `<p class="icard__empty">No play time tracked for ${y} yet.</p>`;
+
+    const purchasedTable = purchasedNotPlayed.length
+      ? `<div class="table-wrap yr__scroll"><table class="mtable">
+          <thead><tr><th>Game</th><th>Purchased</th><th>Price</th></tr></thead>
+          <tbody>${purchasedNotPlayed.map((g) =>
+            `<tr><td>${escapeHtml(g.title)}</td><td>${fmtDate(g.purchaseDate)}</td><td>${g.purchasePrice != null ? formatMoney(g.purchasePrice) : "—"}</td></tr>`).join("")}</tbody>
+        </table></div>`
+      : `<p class="icard__empty">No unplayed purchases for ${y}.</p>`;
+
     return `
       <section class="yr">
         <div class="yr__head">
@@ -931,6 +952,16 @@ const fbDb = getFirestore(fbApp);
         </div>
         <div class="yr__stats">${statHtml}</div>
         <div class="yr__cols">${highlights}</div>
+        <div class="yr__lists">
+          <div class="yr__listblock">
+            <h3 class="icard__title">Games played in ${y} (${playedThisYear.length})</h3>
+            ${playedTable}
+          </div>
+          <div class="yr__listblock">
+            <h3 class="icard__title">Purchased in ${y}, not yet played (${purchasedNotPlayed.length})</h3>
+            ${purchasedTable}
+          </div>
+        </div>
       </section>`;
   }
   function cardBlock(title, inner, wide) {

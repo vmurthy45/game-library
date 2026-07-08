@@ -23,7 +23,7 @@ Later phases add cloud sync (Firebase) and automatic library imports (Vercel + S
 - Per-game fields: **Played on Steam Deck** (Steam only, with Deck icon), **First played** (auto-captured on 0→played transition, overwritable), **Completion date**, **Purchase date + price** (Steam has no price API, so these are manual)
 - Search / platform / sort tucked behind a **Search & Sort** toggle in the tab bar
 - **Insights tab** (landing page for reports): tiles (games, hours, hours this month, avg score, % finished, avg cost/hour), daily play-time graph, top 10 by play time, status & score breakdowns, top genres, **cost-per-hour** ranking, and a **monthly breakdown** table (hours + top games per month)
-- **Year in Review tab**: a separate per-year recap (hours, finished/started/added, avg score, spend, highlights) — kept out of the main Insights view since it's only relevant once a year
+- **Year in Review tab**: a separate per-year recap (hours, finished/started/added, avg score, spend, highlights), plus full lists of **every game played that year** and **games purchased that year but not yet played** — kept out of the main Insights view since it's only relevant once a year
 - **Details tab**: full metadata in a sortable, filterable table (search, platform, status) — including a computed **$/h** column (purchase price ÷ hours played) — with its own **CSV export** of the filtered rows, plus **bulk edit** — select rows (or "select all" within the current filter) and batch-set Status, Platform, Genre, Metacritic, or Steam Deck across all selected games at once
 - Add / edit / delete via dialog
 - **Import** a Steam library (see `tools/steam_sync.py`) — merges in, preserving your scores/statuses.
