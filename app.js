@@ -896,10 +896,19 @@ const fbDb = getFirestore(fbApp);
 
     const hoursByGame = computeGameHoursForYear(year);
     const hoursThisYear = Object.values(hoursByGame).reduce((s, h) => s + h, 0);
-    const playedThisYear = Object.keys(hoursByGame)
+    const hourEntries = Object.keys(hoursByGame)
       .map((id) => ({ g: games.find((x) => x.id === id), h: hoursByGame[id] }))
       .filter((x) => x.g).sort((a, b) => b.h - a.h);
-    const topByHours = playedThisYear.slice(0, 5);
+    const topByHours = hourEntries.slice(0, 5);
+    const hourEntryIds = new Set(hourEntries.map((x) => x.g.id));
+    // Daily-sync history (needed for computeGameHoursForYear) only goes back
+    // so far — for earlier years, Steam's lastPlayed date is the only signal
+    // we have that a game WAS played that year, just not how many hours.
+    const lastPlayedOnly = data
+      .filter((g) => inYear(g.lastPlayed) && !hourEntryIds.has(g.id))
+      .map((g) => ({ g, h: null }))
+      .sort((a, b) => b.g.lastPlayed.localeCompare(a.g.lastPlayed));
+    const playedThisYear = hourEntries.concat(lastPlayedOnly);
     const playedIds = new Set(playedThisYear.map((x) => x.g.id));
     // Bought this year but no hours logged this year (even if played later).
     const purchasedNotPlayed = data.filter((g) => inYear(g.purchaseDate) && !playedIds.has(g.id))
@@ -939,9 +948,9 @@ const fbDb = getFirestore(fbApp);
 
     const playedTable = playedThisYear.length
       ? `<div class="table-wrap yr__scroll"><table class="mtable">
-          <thead><tr><th>Game</th><th>Hours in ${y}</th></tr></thead>
+          <thead><tr><th>Game</th><th>Activity in ${y}</th></tr></thead>
           <tbody>${playedThisYear.map((x) =>
-            `<tr><td>${escapeHtml(x.g.title)}</td><td>${fmtHours(x.h)}</td></tr>`).join("")}</tbody>
+            `<tr><td>${escapeHtml(x.g.title)}</td><td>${x.h != null ? fmtHours(x.h) : "Last played " + fmtDate(x.g.lastPlayed)}</td></tr>`).join("")}</tbody>
         </table></div>`
       : `<p class="icard__empty">No play time tracked for ${y} yet.</p>`;
 

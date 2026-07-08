@@ -193,12 +193,14 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 .yr__n { font-size: 22px; font-weight: 800; }
 .yr__l { font-size: 12px; color: var(--text-dim); }
 .yr__cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.yr__col { min-width: 0; }
 .yr__col h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-dim); }
 .yr__list { margin: 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
 .yr__list li span { color: var(--text-dim); font-size: 12px; }
 .yr__pick { margin: 0; font-weight: 700; }
 .yr__pick span { color: var(--accent); font-weight: 600; }
 .yr__lists { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 18px; }
+.yr__listblock { min-width: 0; }
 .yr__listblock .icard__title { margin-bottom: 10px; }
 .yr__scroll { max-height: 320px; overflow-y: auto; }
 
@@ -277,7 +279,7 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 .itile__n { font-size: 26px; font-weight: 800; }
 .itile__l { font-size: 13px; color: var(--text-dim); }
 .icards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.icard { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.icard { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-width: 0; }
 .icard--wide { grid-column: 1 / -1; }
 .icard__title { margin: 0 0 14px; font-size: 15px; }
 .icard__empty { color: var(--text-dim); font-size: 13px; margin: 8px 0 0; }
@@ -456,7 +458,7 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
   padding: 16px; border-bottom: 1px solid var(--border);
 }
 .dialog__title { margin: 0; font-size: 18px; }
-.dialog__body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.dialog__body { padding: 16px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 14px; }
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 .field__input, .field--block .field__select { width: 100%; }
@@ -479,6 +481,13 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
   .field__select { min-width: 0; width: 100%; }
   /* Wide, full-width tiles on mobile (square tiles looked off) */
   .grid { grid-template-columns: 1fr; gap: 12px; }
+  /* Star rating widget (10 stars + clear) is fixed-width by font-size and
+     doesn't shrink on its own — on narrow phones it was wider than the
+     dialog, forcing the whole dialog to scroll horizontally. */
+  .star, .star-clear { font-size: 17px; }
+  .star-clear { font-size: 12px; margin-left: 4px; }
+  .stars { gap: 1px; }
+  .score-row .field--block { min-width: 0; }
   /* Roomier card text on mobile so it isn't squished */
   .card__body { padding: 14px 16px; gap: 10px; }
   .card__title { font-size: 17px; -webkit-line-clamp: 1; }
