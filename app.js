@@ -1244,6 +1244,9 @@ const fbDb = getFirestore(fbApp);
     const c = $("#controls");
     const show = c.hidden;
     c.hidden = !show;
+    // On mobile the status chips join search/sort behind this same toggle
+    // ("Filters"); on desktop chips stay always-visible regardless of this class.
+    $("#chipsSection").classList.toggle("chips--open", show);
     $("#filterToggle").setAttribute("aria-expanded", String(show));
     $("#filterToggle").classList.toggle("tabs__filter--active", show);
     if (show) $("#searchInput").focus();

@@ -166,6 +166,7 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 .tabs__filter:hover { border-color: var(--primary); }
 .tabs__filter--active { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
 .tabs__filter:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.btn__text--mobile { display: none; }
 
 /* Checkbox field (Steam Deck) */
 .field--check { flex-direction: row; align-items: center; gap: 9px; cursor: pointer; }
@@ -455,7 +456,17 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
   .field-row { flex-direction: column; gap: 14px; }
   .topbar__actions .btn__text { display: none; }
   .topbar__actions .btn { padding: 9px 11px; }
-  .tabs__filter .btn__text { display: none; }
+  .btn__text--desktop { display: none; }
+  .btn__text--mobile { display: inline; }
+  /* Give "Filters" its own row instead of competing with the scrolling tab
+     strip — with a real text label it's too wide to share that row on narrow
+     phones and was getting pushed off-screen. */
+  .tabs__inner { flex-wrap: wrap; row-gap: 6px; }
+  .tabs__filter { flex: 1 1 100%; justify-content: center; margin-left: 0; }
+  /* Status chips join Search/Sort behind the "Filters" toggle on mobile;
+     desktop keeps chips always visible (rule above only applies <=560px). */
+  .chips { display: none; }
+  .chips.chips--open { display: block; }
   .itiles { grid-template-columns: repeat(2, 1fr); }
   .icards { grid-template-columns: 1fr; }
   .hbar { grid-template-columns: 96px 1fr 46px; }
