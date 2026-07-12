@@ -356,6 +356,49 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
 .daily__controls .field__input { min-width: 0; width: 150px; }
 .daily__to { font-size: 12px; color: var(--text-dim); }
 
+/* ---------- What should I play ---------- */
+.play__main {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 18px; padding-top: 24px; padding-bottom: 32px;
+}
+.play__hint { font-size: 13px; color: var(--text-dim); text-align: center; margin: 0; }
+.play__stage {
+  width: 100%; max-width: 380px; min-height: 420px;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: pan-y;
+}
+.play-card {
+  width: 100%; background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  cursor: grab; user-select: none; -webkit-user-select: none;
+  animation: play-card-in .18s ease;
+}
+.play-card--dragging { cursor: grabbing; transition: none; }
+@keyframes play-card-in { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.play-card__cover {
+  aspect-ratio: 16 / 9; background: var(--bg-elev-2);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; pointer-events: none;
+}
+.play-card__cover img { width: 100%; height: 100%; object-fit: cover; }
+.play-card__cover-fallback { font-size: 52px; opacity: .5; }
+.play-card__body { padding: 18px; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+.play-card__title { font-size: 21px; font-weight: 700; margin: 0; }
+.play-card__meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; color: var(--text-dim); align-items: center; }
+.play-card__status {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  color: #fff;
+}
+.play-card__stats { display: flex; gap: 28px; margin-top: 4px; font-size: 13px; }
+.play-card__stat { display: flex; flex-direction: column; }
+.play-card__stat b { font-size: 16px; color: var(--text); }
+.play-card__stat span { color: var(--text-dim); }
+
+.play__actions { display: flex; gap: 12px; width: 100%; max-width: 380px; }
+.play__skip, .play__pick { flex: 1; justify-content: center; padding: 12px; font-size: 14px; }
+
 /* ---------- Controls ---------- */
 .controls { background: var(--bg); }
 .controls__inner {
@@ -516,6 +559,14 @@ html[data-theme="light"] .theme-icon::before { content: "☀️"; }
   .yr__stats { grid-template-columns: repeat(2, 1fr); }
   .yr__cols { grid-template-columns: 1fr; }
   .yr__lists { grid-template-columns: 1fr; }
+  /* Card should feel like the whole screen on a phone, not a tile floating
+     in a big empty page. */
+  .play__main { padding-top: 12px; gap: 14px; }
+  .play__hint { font-size: 12px; padding: 0 12px; }
+  .play__stage { min-height: 360px; }
+  .play-card__title { font-size: 19px; }
+  .play-card__body { padding: 16px; }
+  .play-card__stats { gap: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

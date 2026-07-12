@@ -504,6 +504,7 @@ const fbDb = getFirestore(fbApp);
     else { data.added = Date.now(); games.push(data); }
     persist([data.id]);
     render();
+    if (ui.view === "play") renderPlay();
     closeDialog();
   }
   function deleteGame() {
@@ -515,6 +516,7 @@ const fbDb = getFirestore(fbApp);
     store.save(games);
     if (currentUser) cloudDeleteDoc(id);
     render();
+    if (ui.view === "play") renderPlay();
     closeDialog();
   }
 
@@ -1389,6 +1391,121 @@ const fbDb = getFirestore(fbApp);
     renderGoals();
   }
 
+  /* ---------- What should I play view ---------- */
+  // Last-shown game id, so the next random pick doesn't repeat it back-to-back.
+  let playCurrentId = null;
+
+  // Only actively-playable statuses — narrower than reportable() (which just
+  // excludes Archived): Finished/Shelved games aren't things you'd want a
+  // "what should I play" recommendation to surface.
+  const PLAYABLE_STATUSES = ["Backlog", "Evergreen", "Currently Playing"];
+  function playPool() { return games.filter((g) => PLAYABLE_STATUSES.includes(g.status)); }
+
+  function pickRandomGame(excludeId) {
+    const pool = playPool();
+    if (!pool.length) return null;
+    if (pool.length === 1) return pool[0];
+    let g;
+    do { g = pool[Math.floor(Math.random() * pool.length)]; } while (g.id === excludeId);
+    return g;
+  }
+
+  function playCardHtml(g) {
+    const cover = g.cover
+      ? `<img src="${escapeHtml(g.cover)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="play-card__cover-fallback" style="display:none" aria-hidden="true">${coverGlyph(g.platform)}</span>`
+      : `<span class="play-card__cover-fallback" aria-hidden="true">${coverGlyph(g.platform)}</span>`;
+    return `
+      <div class="play-card" data-id="${g.id}">
+        <div class="play-card__cover">
+          ${cover}
+          ${platformBadge(g.platform)}
+          <span class="play-card__status" style="background:${STATUS_COLORS[g.status] || "#888"}">${escapeHtml(g.status)}</span>
+        </div>
+        <div class="play-card__body">
+          <h2 class="play-card__title">${escapeHtml(g.title)}</h2>
+          <div class="play-card__meta">
+            ${g.genre ? `<span>${escapeHtml(g.genre)}</span>` : ""}
+            ${g.score ? `<span class="score">★ ${g.score}/10</span>` : ""}
+            ${g.steamDeck ? `<span class="badge-deck" title="Played on Steam Deck">${DECK_ICON} Deck</span>` : ""}
+          </div>
+          <div class="play-card__stats">
+            <div class="play-card__stat"><b>${fmtHours(g.playtime)}</b><span>Play time</span></div>
+            <div class="play-card__stat"><b>${fmtDate(g.lastPlayed)}</b><span>Last played</span></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderPlay() {
+    const stage = $("#playStage");
+    const pool = playPool();
+    $("#playEmpty").hidden = pool.length > 0;
+    $("#playSkipBtn").disabled = pool.length === 0;
+    $("#playPickBtn").disabled = pool.length === 0;
+    if (!pool.length) { stage.innerHTML = ""; playCurrentId = null; return; }
+    const g = pool.find((x) => x.id === playCurrentId) || pickRandomGame(null);
+    playCurrentId = g.id;
+    stage.innerHTML = playCardHtml(g);
+    attachPlayGestures(stage.querySelector(".play-card"));
+  }
+
+  function nextPlayPick() {
+    const g = pickRandomGame(playCurrentId);
+    if (!g) { renderPlay(); return; }
+    playCurrentId = g.id;
+    const stage = $("#playStage");
+    stage.innerHTML = playCardHtml(g);
+    const card = stage.querySelector(".play-card");
+    card.classList.add("play-card--enter");
+    attachPlayGestures(card);
+  }
+
+  // Pointer Events unify mouse drag (desktop) and touch swipe (mobile) in one
+  // handler. A tap (near-zero movement) opens the game's edit dialog instead
+  // of counting as a swipe.
+  function attachPlayGestures(card) {
+    const threshold = 100;
+    let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0;
+
+    function onDown(e) {
+      dragging = true;
+      startX = e.clientX; startY = e.clientY; dx = 0; dy = 0;
+      card.setPointerCapture(e.pointerId);
+      card.classList.remove("play-card--enter");
+      card.classList.add("play-card--dragging");
+    }
+    function onMove(e) {
+      if (!dragging) return;
+      dx = e.clientX - startX; dy = e.clientY - startY;
+      card.style.transform = `translate(${dx}px, ${dy * 0.15}px) rotate(${dx / 14}deg)`;
+      card.style.opacity = String(Math.max(1 - Math.abs(dx) / 400, 0.35));
+    }
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      card.classList.remove("play-card--dragging");
+      if (Math.abs(dx) > threshold) {
+        const dir = dx > 0 ? 1 : -1;
+        card.style.transition = "transform .25s ease, opacity .25s ease";
+        card.style.transform = `translate(${dir * 600}px, ${dy * 0.15}px) rotate(${dir * 26}deg)`;
+        card.style.opacity = "0";
+        setTimeout(nextPlayPick, 200);
+      } else if (Math.abs(dx) < 6 && Math.abs(dy) < 6) {
+        const g = games.find((x) => x.id === card.dataset.id);
+        if (g) openDialog(g);
+        card.style.transform = ""; card.style.opacity = "";
+      } else {
+        card.style.transition = "transform .2s ease, opacity .2s ease";
+        card.style.transform = ""; card.style.opacity = "";
+        setTimeout(() => { card.style.transition = ""; }, 200);
+      }
+    }
+    card.addEventListener("pointerdown", onDown);
+    card.addEventListener("pointermove", onMove);
+    card.addEventListener("pointerup", onUp);
+    card.addEventListener("pointercancel", onUp);
+  }
+
   /* ---------- Tabs ---------- */
   function switchView(view) {
     ui.view = view;
@@ -1397,6 +1514,7 @@ const fbDb = getFirestore(fbApp);
     $("#yearView").hidden = view !== "year";
     $("#detailsView").hidden = view !== "details";
     $("#goalsView").hidden = view !== "goals";
+    $("#playView").hidden = view !== "play";
     $("#filterToggle").hidden = view !== "library";
     document.querySelectorAll(".tab").forEach((t) => {
       const active = t.dataset.view === view;
@@ -1407,6 +1525,7 @@ const fbDb = getFirestore(fbApp);
     else if (view === "year") renderYearReview();
     else if (view === "details") renderDetails();
     else if (view === "goals") renderGoals();
+    else if (view === "play") renderPlay();
   }
   function toggleControls() {
     const c = $("#controls");
@@ -1511,6 +1630,10 @@ const fbDb = getFirestore(fbApp);
     $("#cancelBtn").addEventListener("click", closeDialog);
     $("#deleteBtn").addEventListener("click", deleteGame);
     form.addEventListener("submit", saveGame);
+
+    // What should I play
+    $("#playSkipBtn").addEventListener("click", nextPlayPick);
+    $("#playPickBtn").addEventListener("click", nextPlayPick);
 
     // Tabs
     document.querySelectorAll(".tab").forEach((t) =>

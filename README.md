@@ -37,6 +37,9 @@ Later phases add cloud sync (Firebase) and automatic library imports (Vercel + S
   Steam Deck) across devices via Firestore — see "Cloud sync" below
 - **Goals tab**: a freeform list for anything ("Finish 10 games this year", "Beat Elden Ring
   before the DLC") — check off when done, syncs the same way as your other personal data
+- **What should I play tab**: recommends a random game from Backlog, Evergreen, or Currently
+  Playing (never Finished, Shelved, or Archived) as a swipeable card — mobile-first, swipe or
+  drag to skip, tap the card to open for editing
 
 ## Run locally
 
