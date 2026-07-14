@@ -99,6 +99,9 @@ const fbDb = getFirestore(fbApp);
   const CLOUD_FIELDS = ["score", "status", "firstPlayed", "completed", "purchaseDate", "purchasePrice", "steamDeck"];
   const MANUAL_FIELDS = ["title", "platform", "playtime", "lastPlayed", "genre", "metacritic", "cover", "added"];
   let currentUser = null;
+  // Resolves once autoSyncFromServer() has merged data/steam_games.json —
+  // cloud pulls await this so they never overlay onto a half-loaded library.
+  let serverSyncDone = Promise.resolve();
 
   function cloudDocData(g) {
     // "" → null: date/text fields hold "" when blank (readForm), and an
@@ -153,8 +156,18 @@ const fbDb = getFirestore(fbApp);
   // Pull everything from Firestore, overlay onto local games (cloud wins for
   // personal fields), then push local state back up so both sides end up
   // reconciled — this doubles as the one-time migration on first sign-in.
-  async function cloudPull() {
+  // `reconcile:false` skips the push-back — used for the lightweight re-pull
+  // when returning to an already-open tab, where a full 241-doc write batch
+  // would be wasted (and would widen the window for clobbering a fresher
+  // change just made on another device).
+  let lastCloudPullAt = 0;
+  async function cloudPull(reconcile = true) {
     if (!currentUser) return;
+    // The games array MUST be populated before overlaying cloud data: Steam-
+    // game docs carry no title, so against an empty (freshly-cleared) library
+    // they all get skipped and statuses silently fail to apply until the
+    // next reload.
+    await serverSyncDone;
     setSyncStatus("syncing");
     try {
       const snap = await getDocs(collection(fbDb, "users", currentUser.uid, "games"));
@@ -174,7 +187,8 @@ const fbDb = getFirestore(fbApp);
         }
       });
       store.save(games);
-      await cloudPush(games.map((g) => g.id));   // reconcile: push everything back up
+      if (reconcile) await cloudPush(games.map((g) => g.id));   // reconcile: push everything back up
+      lastCloudPullAt = Date.now();
       setSyncStatus("synced");
     } catch (e) {
       console.warn("Cloud pull failed:", e);
@@ -1587,13 +1601,29 @@ const fbDb = getFirestore(fbApp);
       updateAuthUI();
       if (user) {
         await Promise.all([cloudPull(), cloudPullGoals()]);
-        render();
-        if (ui.view === "insights") renderInsights();
-        else if (ui.view === "year") renderYearReview();
-        else if (ui.view === "details") renderDetails();
-        else if (ui.view === "goals") renderGoals();
+        renderActiveView();
       }
     });
+
+    // A tab left open (typically on a phone) otherwise only syncs at page
+    // load — re-pull cloud data when the user comes back to it, so a status
+    // changed on the desktop shows up without a manual reload. Throttled;
+    // no reconcile push (read-only refresh).
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState !== "visible" || !currentUser) return;
+      if (Date.now() - lastCloudPullAt < 5 * 60 * 1000) return;
+      await Promise.all([cloudPull(false), cloudPullGoals()]);
+      renderActiveView();
+    });
+  }
+
+  function renderActiveView() {
+    render();
+    if (ui.view === "insights") renderInsights();
+    else if (ui.view === "year") renderYearReview();
+    else if (ui.view === "details") renderDetails();
+    else if (ui.view === "goals") renderGoals();
+    else if (ui.view === "play") renderPlay();
   }
 
   function updateAuthUI() {
@@ -1613,7 +1643,7 @@ const fbDb = getFirestore(fbApp);
     buildStars();
     applyFirstPlayed();
     render();
-    autoSyncFromServer();   // pull in data the daily GitHub Action committed
+    serverSyncDone = autoSyncFromServer();   // pull in data the daily GitHub Action committed
 
     $("#addBtn").addEventListener("click", () => openDialog(null));
     $("#themeBtn").addEventListener("click", toggleTheme);

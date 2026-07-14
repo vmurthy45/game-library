@@ -103,6 +103,8 @@ their only home.
 - Signed out: app behaves exactly as before (localStorage only, works fully offline).
 - First sign-in on a device does a two-way reconcile: pulls anything already in Firestore,
   then pushes everything local up — this also acts as the one-time migration.
+- An already-open tab re-pulls cloud data when you come back to it (throttled to every
+  5 min), so a status changed on the desktop shows up on the phone without a reload.
 
 ## Roadmap
 
