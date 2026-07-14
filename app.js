@@ -101,21 +101,26 @@ const fbDb = getFirestore(fbApp);
   let currentUser = null;
 
   function cloudDocData(g) {
+    // "" → null: date/text fields hold "" when blank (readForm), and an
+    // explicit "" in Firestore would clobber real data on other devices'
+    // pulls just like the nulls did. Store all blanks as null.
+    const val = (v) => (v == null || v === "" ? null : v);
     const data = {};
-    CLOUD_FIELDS.forEach((k) => { data[k] = g[k] != null ? g[k] : null; });
-    if (!g.appid) MANUAL_FIELDS.forEach((k) => { data[k] = g[k] != null ? g[k] : null; });
+    CLOUD_FIELDS.forEach((k) => { data[k] = val(g[k]); });
+    if (!g.appid) MANUAL_FIELDS.forEach((k) => { data[k] = val(g[k]); });
     return data;
   }
 
-  // A blank/null value from Firestore must never overwrite real local data —
-  // this is what caused purchase history to vanish on sign-in: an early
-  // reconcile-push (before purchase data existed) wrote explicit `null`s to
-  // Firestore, and every pull since then treated those nulls as authoritative
-  // and wiped out purchase data added later via a direct data-file update.
-  // Self-healing: once this stops happening, the next sign-in's reconcile
-  // push will overwrite those stale Firestore nulls with the real local data.
+  // A blank (null OR "") value from Firestore must never overwrite real local
+  // data — explicit `null`s from an early reconcile-push (before purchase data
+  // existed) wiped purchase data on every sign-in; after that was fixed, `""`
+  // date fields (blank dialog inputs are "", not null) kept wiping purchase
+  // DATES the same way. Self-healing: the reconcile push after each pull
+  // overwrites stale Firestore blanks with the real local values.
   function applyCloudFields(target, cloudDoc, keys) {
-    keys.forEach((k) => { if (cloudDoc[k] != null) target[k] = cloudDoc[k]; });
+    keys.forEach((k) => {
+      if (cloudDoc[k] != null && cloudDoc[k] !== "") target[k] = cloudDoc[k];
+    });
   }
 
   async function cloudPush(ids) {
@@ -450,9 +455,6 @@ const fbDb = getFirestore(fbApp);
     $("#f_purchaseDate").value = isEdit ? (game.purchaseDate || "") : "";
     $("#f_purchasePrice").value = isEdit && game.purchasePrice != null ? game.purchasePrice : "";
     $("#f_steamDeck").checked = isEdit ? !!game.steamDeck : false;
-    $("#f_genre").value = isEdit ? (game.genre || "") : "";
-    $("#f_metacritic").value = isEdit && game.metacritic != null ? game.metacritic : "";
-    $("#f_cover").value = isEdit ? (game.cover || "") : "";
     $("#deleteBtn").hidden = !isEdit;
     updateSteamDeckVisibility();
 
@@ -483,9 +485,8 @@ const fbDb = getFirestore(fbApp);
       purchaseDate: $("#f_purchaseDate").value || "",
       purchasePrice: (function () { const v = $("#f_purchasePrice").value; return v === "" ? null : Math.max(0, Number(v)); })(),
       steamDeck: platform === "Steam" ? $("#f_steamDeck").checked : false,
-      genre: $("#f_genre").value.trim(),
-      metacritic: clamp(num($("#f_metacritic").value), 0, 100),
-      cover: $("#f_cover").value.trim(),
+      // genre/metacritic/cover intentionally absent — not editable in the
+      // dialog. saveGame's Object.assign merge leaves existing values alone.
     };
   }
   // Save locally (always) and, if signed in, push to Firestore so the

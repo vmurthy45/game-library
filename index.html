@@ -292,22 +292,10 @@
           </label>
         </div>
 
-        <div class="field-row">
-          <label class="field field--block">
-            <span class="field__label">Genre</span>
-            <input id="f_genre" class="field__input" type="text" placeholder="e.g. RPG" />
-          </label>
-
-          <label class="field field--block">
-            <span class="field__label">Metacritic</span>
-            <input id="f_metacritic" class="field__input" type="number" min="0" max="100" step="1" placeholder="—" />
-          </label>
-        </div>
-
-        <label class="field field--block">
-          <span class="field__label">Cover image URL</span>
-          <input id="f_cover" class="field__input" type="url" placeholder="https://…" />
-        </label>
+        <!-- Genre / Metacritic / cover URL are deliberately NOT editable here:
+             they come from the Steam sync (or bulk edit in Details) and only
+             cluttered the dialog, especially on mobile. Existing values are
+             preserved untouched on save. -->
       </div>
 
       <div class="dialog__foot">
@@ -319,6 +307,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="app.js?v=15"></script>
+  <script type="module" src="app.js?v=16"></script>
 </body>
 </html>
